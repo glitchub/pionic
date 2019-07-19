@@ -66,7 +66,8 @@ case $command in
         esac
         tmp=$(mktemp -t display.XXXXXX)
         trap "rm -f $tmp*" EXIT
-        cat > $tmp
+        # get stdin but strip the very last line feed
+        awk 'NR>1{print s}{s=$0}END{printf "%s",s}' > $tmp
         if ((overlay)); then
             ../fbput/fbput -g $tmp.fb
             source="-depth 8 RGB:$tmp.fb"

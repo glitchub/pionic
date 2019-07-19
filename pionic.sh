@@ -1,107 +1,150 @@
-#!/bin/bash
-# This runs at boot, start test station operation
-# It can also be run manually to restart all services
+#!/bin/bash -eu
 
-set -ue; trap 'echo $0: line $LINENO: exit status $? >&2' ERR
+# This runs at boot, start test station operation,
 
-die() { echo "$*" >&2; exit 1; }
+# It can also be run manually to restart all services, in that case uses the
+# cached server IP and fixture.
 
-grep -q Raspberry /etc/rpi-issue &>/dev/null || die "Can only be run on Raspberry PI"
+# report errors before exit, this tries to look like the 'unbound variable' error
+trap 'echo $0: line $LINENO: exit status $? >&2' ERR
+
+# abort with a message
+die() { echo "$0: $*" >&2; exit 1; }
+
+grep -q Raspberry /etc/rpi-issue &>/dev/null || die "Requires a Raspberry Pi"
 ((UID==0)) || die "Must be run as root"
 
 here=$(realpath ${0%/*})
 
-lookup() { awk 'BEGIN{X=1} {gsub(/[ \t]+/,"");if($1=="'$1'"){print $2; X=0; exit}} END{exit X}' FS== $here/pionic.cfg; }
+# return ip address for interface $1 and true, or false if no IP
+ipaddr() { local s=$(ip -4 -o a show dev $1 2>/dev/null | awk '{print $4}'); [[ $s ]] && echo $s; }
 
-# return ip address for interface $1 or "" 
-ipaddr() { ip -4 -o a show dev $1 | awk '{print $4}'; }
+# Where to put temp files, cgi/factory also needs to know this
+tmp=/tmp/pionic
 
-# return true if interface $1 is up and has ip address, false if not, sets $stat1 and $stat2
-isup()
+# curl -q=disable curl.config, -s=silent (no status), -S=show error, -f=fail with exit status 22 
+curl="curl -qsSf"
+
+# turn console on and off
+console()
 {
-    if stat1=$(cat /sys/class/net/$1/address); then
-        stat2=$(ipaddr $1)
-        ! [[ $stat2 ]] || return 0
-        (($(cat /sys/class/net/$1/carrier))) && stat2="NO IP" || stat2="UNPLUGGED"
-        return 1
-    fi
-    stat1="NO DEVICE"
-    stat2=""
-    return 0
-}
+    case "$1" in
+        off) 
+            setterm --cursor off > /dev/tty1
+            echo 0 > /sys/class/vtconsole/vtcon1/bind
+            dmesg -n 1
+            ;;
+        *)  
+            echo 1 > /sys/class/vtconsole/vtcon1/bind
+            setterm --cursor on > /dev/tty1
+            ;;
+    esac
+    true
+}    
 
-case "${1:-start}" in
+case "${1:-}" in
     start)
-        # extract interesting configuration from pionic.cfg
-        for key in use_beacon factory_ip pionic_ip dut_ip bind_cgi; do
-            val=$(lookup $key) || die "Must define '$key' in pionic.cfg"
-            declare $key=$val
-        done    
+        mkdir -p $tmp
+        echo $$ > $tmp/.pid
+        shift
+        # maybe use cached params
+        (($#)) || set -- $(cat $tmp/.cached 2>/dev/null)
+        # SERVER_IP is required
+        SERVER_IP=${1:-}
+        [[ "$SERVER_IP." =~ ^(([1-9][0-9]?|1[0-9][0-9]|2([0-4][0-9]|5[0-5]))\.){4}$ ]] || die "Must specify a valid factory server IP address"
+        # fixture is optional
+        FIXTURE=${2:-}
+        # remember params in case of restart, also for cgi/factory
+        echo $* > $tmp/.cached
         
-        sysctl net.ipv6.conf.all.disable_ipv6=1
-        sysctl net.ipv4.ip_forward=1
+        # after this point, kill shell children on exit and reinstate console 
+        trap 'exs=$?; 
+            kill $(jobs -p) &>/dev/null || true; 
+            console on || true;  
+            exit $exs' EXIT
 
-        # eth1 attaches to dut via usb ethernet dongle
-        # bring it up and assign static IP
-        SECONDS=0
-        echo "Waiting for eth1 to come up"
+        # wait for ethernet and usb dongle
         while true; do
-            if ip l set dev eth1 up 2>/dev/null; then
-                ip a add dev eth1 $pionic_ip
-                sleep 1
+            wait=0
+            if ! station_ip=$(ipaddr eth0); then
+                if ! (($(cat /sys/class/net/eth0/carrier))); then
+                    echo "Ethernet is unplugged"
+                 else
+                    echo "Waiting for DHCP on MAC $(cat /sys/class/net/eth0/address)"
+                fi
+                wait=1
+            else
+                station=${station_ip##*.}
+                station=${station%/*}
+            fi
 
-                # Maybe start the beacon server on eth1, the payload contains the factory server address
-                if ((use_beacon)); then
-                    $here/beacon/beacon send eth1 $factory_ip &
-                    disown
+            if ! lan_ip=$(ipaddr eth1); then
+                if ! [ -d /sys/class/net/eth1 ]; then
+                    echo "USB ethernet is not attached"
+                else
+                    # dhcpcd should bring it up soon
+                    echo "Waiting for IP on USB ethernet"
                 fi    
+                wait=1
+            else            
+                if ! pgrep -f cgiserver &>/dev/null; then 
+                    echo "Starting cgi server"
+                    $here/cgiserver -p 80 -d ~pi/pionic/cgi &
+                    wait=1
+                fi
+                if [ -d $here/beacon ] && ! pgrep -f beacon; then
+                    # advertise the server ip
+                    echo "Starting beacon server"
+                    $here/beacon/beacon send eth1 $SERVER_IP &
+                    wait=1
+                fi  
+            fi    
 
-                # Start cgi server, maybe bind to eth1
-                ((bind_cgi)) && bind="-b ${pionic_ip%/*}" || bind=""
-                $here/cgiserver $bind -p 80 -d ~pi/pionic/cgi &
-                disown
+            ((wait)) || break
 
-                break
-            fi
-            ((SECONDS < 10)) || break
-            sleep .5
+            sleep 1
         done
 
-        # eth0 attaches to the factory 
-        # wait for it to get an address from dhcp
-        echo "Waiting for eth0 to come up"
-        while true; do
-            if [[ $(ipaddr eth0) ]]; then
-                ipaddr eth0
+        # now try to fetch the fixture driver
+        if ! [[ $FIXTURE ]]; then
+            echo "Requesting fixture from $SERVER_IP"
+            FIXTURE=$($curl "http://$SERVER_IP/cgi-bin/factory?service=fixture") || die "Fixture request failed"
+        fi    
 
-                # NAT the DUT to the factory
-                iptables -t nat -A POSTROUTING -o eth0 -j MASQUERADE
+        echo "Using fixture '$FIXTURE'"
 
-                # Forward port 2222 from the factory to DUT's ssh
-                iptables -t nat -A PREROUTING -i eth0 -p tcp --dport 2222 -j DNAT --to $dut_ip:22
+        rm -rf $tmp/fixtures
+        mkdir $tmp/fixtures
 
-                # success, launch test daemon if enabled
-                set -- $(lookup launch)
-                (($#)) || set -- show
-                [[ -x $here/launch/$1 ]] || die "Can't launch $*"
-                $here/launch/$* & disown 
-                exit
-            fi
-            ((SECONDS < 10)) || break
-            sleep .5
-        done
-        # something wrong, fail
-        $here/launch/show "Startup failed" 
+        if  [[ $FIXTURE != none ]]; then
+            
+            tarball="http://$SERVER_IP/fixture.tar.gz"
+            echo "Fetching $tarball..."
+            $curl $tarball | tar -C $tmp/fixtures -xz || die "Failed to fetch fixture tarball"
+
+            [[ -e $tmp/fixtures/$FIXTURE ]] || die "No driver for fixture '$FIXTURE'"
+
+        else
+            # just create a bogus 'none' driver
+            cat <<EOT > $tmp/fixtures/none
+printf "TEST STATION $station READY" | $here/cgi/display text fg=white bg=blue align=center point=40
+while true; do sleep 1d; done
+EOT
+        fi 
+
+        # source the fixture driver, it should loop forever
+        console off
+        source $tmp/fixtures/$FIXTURE
+
+        # but die if it doesn't
+        die "Fixture driver '$FIXTURE' returned"
         ;;
 
     stop)
-        pkill $here/beacon/beacon || pkill -f beacon || true
-        pkill  $here/cgiserver || pkill -f cgiserver || true
-        launch=$(lookup launch) && [[ $launch ]] && pkill $here/launch/${launch%% *} || true
-        ip a flush eth1 || true
-        ip l set eth1 down || true
-        iptables -F; iptables -X; iptables -t nat -F
-        cat /dev/zero > /dev/fb0 2>/dev/null || true
+        { 
+            kill $(cat $tmp/.pid) || cat /dev/zero > /dev/fb0 || true 
+            rm -f $tmp/.pid; 
+        } &>/dev/null    
         ;;
 
     res*)
@@ -109,11 +152,8 @@ case "${1:-start}" in
         $0 start
         ;;
 
-    show) 
-        $here/launch/show
+    *)  die "Usage: $0 stop | start [server_ip [fixture]] | restart"
         ;;
-    
-    *) die "Usage: $0 stop|start|restart"
 esac
 true
 
