@@ -3,20 +3,28 @@
 #### USER CONFIGURATION
 
 # Factory server IP address, transmitted by beacon or returned by cgi/factory
-SERVER_IP=172.16.240.254
+SERVER_IP = 172.16.240.254
 
 # LAN IP address, i.e. what address the DUT expects to talk to
-LAN_IP=192.168.111.1
+LAN_IP = 192.168.111.1
 
-# TCP ports to be forwarded from PI WAN interface to specific DUTS, comment out if none
-FORWARD=2222=192.168.111.10:22
+# Space-separated list of TCP ports to be forwarded to specific hosts (in either direction).
+# Ports 61080 and 61433 must forward to the server, others are optional
+FORWARD = 61080=172.16.240.254:80 61443=172.16.240.254:443 
+FORWARD += 2222=192.168.111.10:22 
+
+# Space-separated list of WAN ports to unblock, at least allow ssh port 22
+UNBLOCK = 22
+
+# IP range to be assigned by dhcp, in the form "firstIP, lastIP". Comment out to disable.
+DHCP_RANGE = 192.168.111.250, 192.168.111.254
 
 # If set (to anything), install beacon daemon. Comment out if DUTs have static IP
-# BEACON=1
+# BEACON = 1
 
 # Specify test fixture driver, typically set the 'none' to skip the fixture
 # download entirely. Comment out the let pionic get the fixture from the database.
-FIXTURE=none
+FIXTURE = none
 
 #### END USER CONFIGURATION
 
@@ -60,8 +68,7 @@ endif
 ${repos}: packages
 ifndef CLEAN
 	[ -d $(notdir $@) ] || git clone $@
-	make -C $(notdir $@)
-	$(if $(findstring rasping,$@),WAN_IP= DHCP_RANGE= UNBLOCK=22 LAN_IP=${LAN_IP} FORWARD=${FORWARD})
+	make -C $(notdir $@) $(if $(findstring rasping,$@),WAN_IP= UNBLOCK="${UNBLOCK}" LAN_IP="${LAN_IP}" FORWARD="${FORWARD}" DHCP_RANGE="${DHCP_RANGE}")
 else
 	make -C $(notdir $@) clean || true
 	rm -rf $(notdir $@)
@@ -80,7 +87,7 @@ endif
 /etc/rc.local:
 	sudo sed -i '/pionic/d' $@ # first delete the old
 ifndef CLEAN
-	sudo sed -i '/^exit/i/home/pi/pionic/pionic.sh start ${SERVER_IP} ${FIXTURE}' $@
+	sudo sed -i '/^exit/i/home/pi/pionic/pionic.sh start ${SERVER_IP} ${FIXTURE} &' $@
 endif
 
 # configure kernel

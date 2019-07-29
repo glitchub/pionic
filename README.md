@@ -66,5 +66,8 @@ To install:
     Ensure that USB dongle is attached and reboot. Pi will boot to pionic.sh
     which takes over the display and shows status. If all is well pionic.sh
     will start the fixture driver.
-    
-    Subsequent login to RPi must occur via SSH or serial terminal.
+
+    When pionic is running it takes over the display, login is normally only
+    possible via ssh. It's possible to induce pionic failure by booting with
+    the ethernet unplugged and therefore access the console while it's trying
+    to start.
