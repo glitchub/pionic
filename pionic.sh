@@ -22,25 +22,25 @@ ipaddr() { local s=$(ip -4 -o a show dev $1 2>/dev/null | awk '{print $4}'); [[ 
 # Where to put temp files, cgi/factory also needs to know this
 tmp=/tmp/pionic
 
-# curl -q=disable curl.config, -s=silent (no status), -S=show error, -f=fail with exit status 22 
+# curl -q=disable curl.config, -s=silent (no status), -S=show error, -f=fail with exit status 22
 curl="curl -qsSf"
 
 # turn console on and off
 console()
 {
     case "$1" in
-        off) 
+        off)
             setterm --cursor off > /dev/tty1
             echo 0 > /sys/class/vtconsole/vtcon1/bind
             dmesg -n 1
             ;;
-        *)  
+        *)
             echo 1 > /sys/class/vtconsole/vtcon1/bind
             setterm --cursor on > /dev/tty1
             ;;
     esac
     true
-}    
+}
 
 case "${1:-}" in
     start)
@@ -56,11 +56,11 @@ case "${1:-}" in
         FIXTURE=${2:-}
         # remember params in case of restart, also for cgi/factory
         echo $* > $tmp/.cached
-        
-        # after this point, kill shell children on exit and reinstate console 
-        trap 'exs=$?; 
-            kill $(jobs -p) &>/dev/null || true; 
-            console on || true;  
+
+        # after this point, kill shell children on exit and reinstate console
+        trap 'exs=$?;
+            kill $(jobs -p) &>/dev/null || true;
+            console on || true;
             exit $exs' EXIT
 
         # wait for ethernet and usb dongle
@@ -84,10 +84,10 @@ case "${1:-}" in
                 else
                     # dhcpcd should bring it up soon
                     echo "Waiting for IP on USB ethernet"
-                fi    
+                fi
                 wait=1
-            else            
-                if ! pgrep -f cgiserver &>/dev/null; then 
+            else
+                if ! pgrep -f cgiserver &>/dev/null; then
                     echo "Starting cgi server"
                     $here/cgiserver -p 80 -d ~pi/pionic/cgi &
                     wait=1
@@ -97,8 +97,8 @@ case "${1:-}" in
                     echo "Starting beacon server"
                     $here/beacon/beacon send eth1 $SERVER_IP &
                     wait=1
-                fi  
-            fi    
+                fi
+            fi
 
             ((wait)) || break
 
@@ -109,7 +109,7 @@ case "${1:-}" in
         if ! [[ $FIXTURE ]]; then
             echo "Requesting fixture from $SERVER_IP"
             FIXTURE=$($curl "http://$SERVER_IP/cgi-bin/factory?service=fixture") || die "Fixture request failed"
-        fi    
+        fi
 
         echo "Using fixture '$FIXTURE'"
 
@@ -117,7 +117,7 @@ case "${1:-}" in
         mkdir $tmp/fixtures
 
         if  [[ $FIXTURE != none ]]; then
-            
+
             tarball="http://$SERVER_IP/fixture.tar.gz"
             echo "Fetching $tarball..."
             $curl $tarball | tar -C $tmp/fixtures -xz || die "Failed to fetch fixture tarball"
@@ -127,10 +127,19 @@ case "${1:-}" in
         else
             # just create a bogus 'none' driver
             cat <<EOT > $tmp/fixtures/none
-printf "TEST STATION $station READY" | $here/cgi/display text fg=white bg=blue align=center point=40
-while true; do sleep 1d; done
+while true; do
+    printf "TEST STATION $station READY" | $here/cgi/display text fg=white bg=blue align=center point=40
+    # count screen touches for POC
+    count=0
+    while true; do
+        while read -t0; do read; done # flush
+        read -t10 || break            # wait for a touch or timeout after 10 seconds
+        count=\$((count+1))
+        printf "TEST STATION $station READY\nTouches=\$count" | $here/cgi/display text fg=white bg=blue align=center point=40
+    done
+done < <($here/evdump/evdump mouse0 | grep --line-buffered BTN_MOUSE.*1$)
 EOT
-        fi 
+        fi
 
         # source the fixture driver, it should loop forever
         console off
@@ -141,15 +150,15 @@ EOT
         ;;
 
     stop)
-        { 
-            kill $(cat $tmp/.pid) || cat /dev/zero > /dev/fb0 || true 
-            rm -f $tmp/.pid; 
-        } &>/dev/null    
+        {
+            kill $(cat $tmp/.pid) || cat /dev/zero > /dev/fb0 || true
+            rm -f $tmp/.pid;
+        } &>/dev/null
         ;;
 
     res*)
         $0 stop
-        $0 start
+        exec $0 start
         ;;
 
     *)  die "Usage: $0 stop | start [server_ip [fixture]] | restart"

@@ -69,7 +69,7 @@ case $command in
         # get stdin but strip the very last line feed
         awk 'NR>1{print s}{s=$0}END{printf "%s",s}' > $tmp
         if ((overlay)); then
-            ../fbput/fbput -g $tmp.fb
+            $fbput -g $tmp.fb
             source="-depth 8 RGB:$tmp.fb"
         else
             source="xc:$bg"
