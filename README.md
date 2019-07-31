@@ -18,8 +18,9 @@ Physical configuration:
 
 Pionic provides:
 
-    NAT translation from the DUT to the factory subnet. SSH to port 2222 on the
-    factory interface is forwarded to DUT port 22.
+    NAT translation from the DUT to the server. Port 61080 is forwarded to
+    factory server port 80, and 61443 is forwarded to factory server port 443,
+    the DUT only has to know the IP address of the pionic device.
 
     If enabled, the beacon server is started on the DUT interface, this
     transmits "beacon ethernet packets. The DUT listens for beacons during
@@ -27,8 +28,8 @@ Pionic provides:
     pre-defined static IP in the same subnet.
 
     Alternatively if the DUT will automatically bring up static IP during boot,
-    it can simply attempt to access Pionic's CGI server, and if a response is
-    received then it enters diagnostic mode.
+    it can simply attempt to access the factory server at port 61080, if the
+    expected response is received then it enters diagnostic mode.
 
     Access to test-specific CGI's on port 80, the DUT uses curl e.g.:
 

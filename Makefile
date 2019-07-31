@@ -2,15 +2,15 @@
 
 #### USER CONFIGURATION
 
-# Factory server IP address, transmitted by beacon or returned by cgi/factory
+# Factory server IP address
 SERVER_IP = 172.16.240.254
 
 # LAN IP address, i.e. what address the DUT expects to talk to
 LAN_IP = 192.168.111.1
 
 # Space-separated list of TCP ports to be forwarded to specific hosts (in either direction).
-# Ports 61080 and 61433 must forward to the server, others are optional
-FORWARD = 61080=172.16.240.254:80 61443=172.16.240.254:443 
+# Ports 61080 and 61433 must be defined and forward to the server. Others are optional.
+FORWARD = 61080=${SERVER_IP}:80 61443=${SERVER_IP}:443 
 FORWARD += 2222=192.168.111.10:22 
 
 # Space-separated list of WAN ports to unblock, at least allow ssh port 22
@@ -21,10 +21,6 @@ DHCP_RANGE = 192.168.111.250, 192.168.111.254
 
 # If set (to anything), install beacon daemon. Comment out if DUTs have static IP
 # BEACON = 1
-
-# Specify test fixture driver, typically set the 'none' to skip the fixture
-# download entirely. Comment out the let pionic get the fixture from the database.
-FIXTURE = none
 
 #### END USER CONFIGURATION
 
@@ -67,7 +63,7 @@ endif
 # install and build repos
 ${repos}: packages
 ifndef CLEAN
-	[ -d $(notdir $@) ] || git clone $@
+	if [ -d $(notdir $@) ]; then git -C $(notdir $@) pull; else git clone $@; fi
 	make -C $(notdir $@) $(if $(findstring rasping,$@),WAN_IP= UNBLOCK="${UNBLOCK}" LAN_IP="${LAN_IP}" FORWARD="${FORWARD}" DHCP_RANGE="${DHCP_RANGE}")
 else
 	make -C $(notdir $@) clean || true
@@ -83,11 +79,11 @@ else
 	${APT} remove --autoremove --purge -y ${packages}
 endif
 
-# auto-start pionic.sh, pass it the factory server IP address
+# auto-start pionic.sh
 /etc/rc.local:
 	sudo sed -i '/pionic/d' $@ # first delete the old
 ifndef CLEAN
-	sudo sed -i '/^exit/i/home/pi/pionic/pionic.sh start ${SERVER_IP} ${FIXTURE} &' $@
+	sudo sed -i '/^exit/i/home/pi/pionic/pionic.sh start' $@
 endif
 
 # configure kernel

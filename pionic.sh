@@ -1,11 +1,8 @@
 #!/bin/bash -eu
 
-# This runs at boot, start test station operation,
+# This starts the test station operation. It runs in background at boot.
 
-# It can also be run manually to restart all services, in that case uses the
-# cached server IP and fixture.
-
-# report errors before exit, this tries to look like the 'unbound variable' error
+# Report errors before exit, this tries to look like the 'unbound variable' error
 trap 'echo $0: line $LINENO: exit status $? >&2' ERR
 
 # abort with a message
@@ -16,14 +13,14 @@ grep -q Raspberry /etc/rpi-issue &>/dev/null || die "Requires a Raspberry Pi"
 
 here=$(realpath ${0%/*})
 
-# return ip address for interface $1 and true, or false if no IP
+# Return ip address for interface $1 and true, or false if no IP
 ipaddr() { local s=$(ip -4 -o a show dev $1 2>/dev/null | awk '{print $4}'); [[ $s ]] && echo $s; }
 
 # Where to put temp files, cgi/factory also needs to know this
 tmp=/tmp/pionic
 
-# curl -q=disable curl.config, -s=silent (no status), -S=show error, -f=fail with exit status 22
-curl="curl -qsSf"
+# curl timeout after 4 seconds, -q=disable curl.config, -s=silent (no status), -S=show error, -f=fail with exit status 22
+curl="curl --connect-timeout 2 -qsSf"
 
 # turn console on and off
 console()
@@ -44,22 +41,14 @@ console()
 
 case "${1:-}" in
     start)
+        (
+        # store the subshell pid
         mkdir -p $tmp
-        echo $$ > $tmp/.pid
-        shift
-        # maybe use cached params
-        (($#)) || set -- $(cat $tmp/.cached 2>/dev/null)
-        # SERVER_IP is required
-        SERVER_IP=${1:-}
-        [[ "$SERVER_IP." =~ ^(([1-9][0-9]?|1[0-9][0-9]|2([0-4][0-9]|5[0-5]))\.){4}$ ]] || die "Must specify a valid factory server IP address"
-        # fixture is optional
-        FIXTURE=${2:-}
-        # remember params in case of restart, also for cgi/factory
-        echo $* > $tmp/.cached
-
+        echo $BASHPID > $tmp/.pid
+        
         # after this point, kill shell children on exit and reinstate console
         trap 'exs=$?;
-            kill $(jobs -p) &>/dev/null || true;
+            kill $(jobs -p) &>/dev/null && wait $(jobs -p) || true;
             console on || true;
             exit $exs' EXIT
 
@@ -93,9 +82,9 @@ case "${1:-}" in
                     wait=1
                 fi
                 if [ -d $here/beacon ] && ! pgrep -f beacon; then
-                    # advertise the server ip
+                    # advertise our ip
                     echo "Starting beacon server"
-                    $here/beacon/beacon send eth1 $SERVER_IP &
+                    $here/beacon/beacon send eth1 $station_ip &
                     wait=1
                 fi
             fi
@@ -105,55 +94,41 @@ case "${1:-}" in
             sleep 1
         done
 
-        # now try to fetch the fixture driver
-        if ! [[ $FIXTURE ]]; then
-            echo "Requesting fixture from $SERVER_IP"
-            FIXTURE=$($curl "http://$SERVER_IP/cgi-bin/factory?service=fixture") || die "Fixture request failed"
-        fi
+        # now try to fetch the fixture driver, note local port 61080 redirects to server port 80
+        # If we don't get a response then just assume 'None'
+        echo "Requesting fixture from server"
+        fixture=$($curl "http://localhost:61080/cgi-bin/factory?service=fixture") 
+        fixture=${fixture,,}
+        [[ $fixture && $fixture != none ]] || fixture=default
+        
+        echo "Using fixture '$fixture'"
 
-        echo "Using fixture '$FIXTURE'"
-
-        rm -rf $tmp/fixtures
-        mkdir $tmp/fixtures
-
-        if  [[ $FIXTURE != none ]]; then
-
-            tarball="http://$SERVER_IP/fixture.tar.gz"
-            echo "Fetching $tarball..."
-            $curl $tarball | tar -C $tmp/fixtures -xz || die "Failed to fetch fixture tarball"
-
-            [[ -e $tmp/fixtures/$FIXTURE ]] || die "No driver for fixture '$FIXTURE'"
-
+        if [ -x $here/fixtures/$fixture ]; then
+            # use built-in fixture driver
+            console off
+            $here/fixtures/$fixture $here $station
         else
-            # just create a bogus 'none' driver
-            cat <<EOT > $tmp/fixtures/none
-while true; do
-    printf "TEST STATION $station READY" | $here/cgi/display text fg=white bg=blue align=center point=40
-    # count screen touches for POC
-    count=0
-    while true; do
-        while read -t0; do read; done # flush
-        read -t10 || break            # wait for a touch or timeout after 10 seconds
-        count=\$((count+1))
-        printf "TEST STATION $station READY\nTouches=\$count" | $here/cgi/display text fg=white bg=blue align=center point=40
-    done
-done < <($here/evdump/evdump mouse0 | grep --line-buffered BTN_MOUSE.*1$)
-EOT
-        fi
-
-        # source the fixture driver, it should loop forever
-        console off
-        source $tmp/fixtures/$FIXTURE
-
+            # otherwise try to download it
+            rm -rf $tmp/fixtures
+            mkdir $tmp/fixtures
+            fixtures="http://localhost:61080/fixtures.tar.gz"
+            echo "Fetching $fixtures..."
+            $curl $fixtures | tar -C $tmp/fixtures -xz || die "Failed to fetch fixture tarball"
+            [[ -e $tmp/fixtures/$fixture ]] || die "Fixture driver not found"
+            console off
+            $tmp/fixtures/$fixture $here $station
+        fi  
+        
         # but die if it doesn't
-        die "Fixture driver '$FIXTURE' returned"
+        die "Fixture driver '$fixture' returned"
+        ) &
         ;;
 
     stop)
-        {
-            kill $(cat $tmp/.pid) || cat /dev/zero > /dev/fb0 || true
-            rm -f $tmp/.pid;
-        } &>/dev/null
+        if [ -e $tmp/.pid ]; then
+            kill $(cat $tmp/.pid) &>/dev/null || true
+            rm -f $tmp/.pid
+        fi
         ;;
 
     res*)
@@ -161,7 +136,7 @@ EOT
         exec $0 start
         ;;
 
-    *)  die "Usage: $0 stop | start [server_ip [fixture]] | restart"
+    *)  die "Usage: $0 stop | start | restart"
         ;;
 esac
 true

@@ -1,0 +1,26 @@
+#!/bin/bash -eu
+
+# nuke children on exit
+trap 'x=$?; kill $(jobs -p) &>/dev/null && wait $(jobs -p) || true; exit $x' EXIT
+
+die() { echo $@ >&2; exit 1; }
+
+(($#==2)) || die "Usage: $0 pionic_directory station_id"
+
+pionic=$1
+station=$2
+
+echo "Default fixture driver"
+
+# Note -t1 -c272 -v1 is a screen touch
+$pionic/evdump/evdump -t1 -c272 -v1 mouse0 2>/dev/null | while true; do
+    printf "TEST STATION $station READY" | $pionic/cgi/display text fg=white bg=blue align=center point=40
+    read                        # wait for a touch
+    count=1                     # count them
+    while true; do
+        printf "TEST STATION $station READY\nTouches=$count" | $pionic/cgi/display text fg=white bg=blue align=center point=40
+        read -t10 || break     # wait for another touch or timeout after 10 seconds
+        ((count++))
+    done
+done 
+

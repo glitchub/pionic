@@ -1,7 +1,0 @@
-#!/bin/bash
-# return factory server IP from parameter cache
-here=${0%/*}
-source $here/cgi.inc
-set -- $(cat /tmp/pionic/.cached 2>/dev/null)
-(($#)) || die "Cached parameters missing or invalid"
-echo $1
