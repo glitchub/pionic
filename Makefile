@@ -10,8 +10,8 @@ LAN_IP = 192.168.111.1
 
 # Space-separated list of TCP ports to be forwarded to specific hosts (in either direction).
 # Ports 61080 and 61433 must be defined and forward to the server. Others are optional.
-FORWARD = 61080=${SERVER_IP}:80 61443=${SERVER_IP}:443 
-FORWARD += 2222=192.168.111.10:22 
+FORWARD = 61080=${SERVER_IP}:80 61443=${SERVER_IP}:443
+FORWARD += 2222=192.168.111.10:22
 
 # Space-separated list of WAN ports to unblock, at least allow ssh port 22
 UNBLOCK = 22
@@ -29,7 +29,7 @@ ifeq ($(shell grep "Raspberry Pi reference 2019-06-20" /etc/rpi-issue),)
 $(error "Requires Raspberry Pi running 2019-06-20-raspbin-buster-lite.img")
 endif
 
-ifneq ($(filter root,${USER}),)
+ifeq (${USER},root)
 $(error Must not be run as root))
 endif
 
@@ -64,10 +64,12 @@ endif
 ${repos}: packages
 ifndef CLEAN
 	if [ -d $(notdir $@) ]; then git -C $(notdir $@) pull; else git clone $@; fi
-	make -C $(notdir $@) $(if $(findstring rasping,$@),WAN_IP= UNBLOCK="${UNBLOCK}" LAN_IP="${LAN_IP}" FORWARD="${FORWARD}" DHCP_RANGE="${DHCP_RANGE}")
+	make -C $(notdir $@) $(if $(findstring rasping,$@),UNBLOCK="$(strip ${UNBLOCK})" LAN_IP="$(strip ${LAN_IP})" FORWARD="$(strip ${FORWARD})" DHCP_RANGE="$(strip ${DHCP_RANGE})")
 else
 	make -C $(notdir $@) clean || true
-	rm -rf $(notdir $@)
+ifeq (${CLEAN},2)
+	rm -rf $(notdir $@))
+endif
 endif
 
 # install packages
@@ -75,7 +77,7 @@ APT=DEBIAN_FRONTEND=noninteractive sudo -E apt
 packages:
 ifndef CLEAN
 	${APT} install -y ${packages}
-else
+else ifeq ($(CLEAN),2)
 	${APT} remove --autoremove --purge -y ${packages}
 endif
 
@@ -110,7 +112,12 @@ overscan_bottom=-32\n\
 " | sudo sh -c 'cat >> $@'
 endif
 
-# Try to delete everything back to original state
+# Clean config files but don't remove packages or repos
 clean:
 	make CLEAN=1
-	@echo "All clean"
+	@echo "Clean complete"
+
+# Clean config files and remove packages and repos
+uninstall:
+	make CLEAN=2
+	@echo "Uninstall complete"

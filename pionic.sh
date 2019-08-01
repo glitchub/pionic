@@ -52,41 +52,28 @@ case "${1:-}" in
             console on || true;
             exit $exs' EXIT
 
-        # wait for ethernet and usb dongle
+        # wait for network to be up and start daemons
         while true; do
             wait=0
-            if ! station_ip=$(ipaddr eth0); then
-                if ! (($(cat /sys/class/net/eth0/carrier))); then
-                    echo "Ethernet is unplugged"
-                 else
-                    echo "Waiting for DHCP on MAC $(cat /sys/class/net/eth0/address)"
-                fi
+            if ! (($(cat /sys/class/net/eth0/carrier))); then
+                echo "Ethernet is not attached"
+                wait=1
+            elif ! station_ip=$(ipaddr eth0); then
+                echo "Waiting for station ID, MAC=$(cat /sys/class/net/eth0/address)"
                 wait=1
             else
                 station=${station_ip##*.}
                 station=${station%/*}
             fi
 
-            if ! lan_ip=$(ipaddr eth1); then
-                if ! [ -d /sys/class/net/eth1 ]; then
-                    echo "USB ethernet is not attached"
-                else
-                    # dhcpcd should bring it up soon
-                    echo "Waiting for IP on USB ethernet"
-                fi
+            if ! [ -d /sys/class/net/eth1 ]; then
+                echo "USB ethernet is not attached"
                 wait=1
-            else
-                if ! pgrep -f cgiserver &>/dev/null; then
-                    echo "Starting cgi server"
-                    $here/cgiserver -p 80 -d ~pi/pionic/cgi &
-                    wait=1
-                fi
-                if [ -d $here/beacon ] && ! pgrep -f beacon; then
-                    # advertise our ip
-                    echo "Starting beacon server"
-                    $here/beacon/beacon send eth1 $station_ip &
-                    wait=1
-                fi
+            fi    
+            
+            if ! ipaddr br0 &>/dev/null; then
+                echo "Waiting for br0"
+                wait=1
             fi
 
             ((wait)) || break
@@ -94,8 +81,12 @@ case "${1:-}" in
             sleep 1
         done
 
-        # now try to fetch the fixture driver, note local port 61080 redirects to server port 80
-        # If we don't get a response then just assume 'None'
+        # start daemons
+        pgrep -f cgiserver &>/dev/null || $here/cgiserver -p 80 -d ~pi/pionic/cgi &
+        ! [ -d $here/beacon ] || pgrep -f beacon &>/dev/null || $here/beacon/beacon send br0 &
+        
+        # Try to fetch the fixture driver name, note local port 61080 redirects to server port 80
+        # If we don't get a response then use the default
         echo "Requesting fixture from server"
         fixture=$($curl "http://localhost:61080/cgi-bin/factory?service=fixture") 
         fixture=${fixture,,}
@@ -113,14 +104,13 @@ case "${1:-}" in
             mkdir $tmp/fixtures
             fixtures="http://localhost:61080/fixtures.tar.gz"
             echo "Fetching $fixtures..."
-            $curl $fixtures | tar -C $tmp/fixtures -xz || die "Failed to fetch fixture tarball"
-            [[ -e $tmp/fixtures/$fixture ]] || die "Fixture driver not found"
+            $curl $fixtures | tar -C $tmp/fixtures -xz || die "Fetch failed"
+            [[ -e $tmp/fixtures/$fixture ]] || die "Fixture driver '$fixture' not found"
             console off
             $tmp/fixtures/$fixture $here $station
         fi  
         
-        # but die if it doesn't
-        die "Fixture driver '$fixture' returned"
+        die "Fixture driver '$fixture' exit status $?"
         ) &
         ;;
 
