@@ -103,7 +103,7 @@ hdmi_ignore_edid=0x5a000080\n\
 dtparam=i2c_arm=on\n\
 dtparam=spi=on\n\
 gpu_mem=16\n\
-avoid_warnings=1\n\
+# avoid_warnings=1\n\
 overscan_left=-32\n\
 overscan_right=-32\n\
 overscan_top=-32\n\
