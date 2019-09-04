@@ -38,7 +38,7 @@ repos=https\://github.com/glitchub/rasping
 repos+=https\://github.com/glitchub/evdump
 repos+=https\://github.com/glitchub/runfor
 repos+=https\://github.com/glitchub/fbput
-repos+=https\://github.com/glitchub/FM_Transmitter_RPi3
+repos+=https\://github.com/glitchub/pifm
 repos+=https\://github.com/glitchub/i2cio
 ifdef BEACON
 repos+=https\://github.com/glitchub/beacon
@@ -68,7 +68,7 @@ ifndef CLEAN
 else
 	make -C $(notdir $@) clean || true
 ifeq (${CLEAN},2)
-	rm -rf $(notdir $@))
+	rm -rf $(notdir $@)
 endif
 endif
 
@@ -77,7 +77,7 @@ APT=DEBIAN_FRONTEND=noninteractive sudo -E apt
 packages:
 ifndef CLEAN
 	${APT} install -y ${packages}
-else ifeq ($(CLEAN),2)
+else ifeq (${CLEAN},2)
 	${APT} remove --autoremove --purge -y ${packages}
 endif
 

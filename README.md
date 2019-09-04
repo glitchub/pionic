@@ -57,6 +57,10 @@ To install:
     Run:
         sudo apt update
         sudo apt upgrade
+        sudo reboot
+
+    Log back in and:
+
         sudo apt install git
         git clone https://github.com/glitchub/pionic
 

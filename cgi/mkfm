@@ -18,6 +18,12 @@ Options are:
 
 sox=$(type -P sox) || die "Need executable sox"
 
+pifm=$base/pifm/pifm
+[ -x $pifm ] || die "Need executable $pifm"
+
+pifm_sh=$base/pifm/pifm.sh
+[ -x $pifm_sh ] || die "Need executable $pifm_sh"
+
 freq=99.9
 tone=1000
 time=30
@@ -29,11 +35,9 @@ time=30
     *) exit 1 # die "$usage"
 esac; done    
 
-pkill -f ${fm_transmitter##*/} || true
+pkill -f ${pifm##*/} || true
 if ((time)); then
-    echo "Transmitting $tone Hz on $freq MHz FM for $time seconds"
     # close popen'd stdio or cgiserver will stall
     [ -t 1 ] || exec 0<&- 1>&- 2>&- 3>&- 4>&- 5>&- 6>&- 7>&- 8>&- 9>&-
-    # Note must kill fm_transmitter with SIGINT aka signal 2
-    ( set +E; $runfor -s2 $time $fm_transmitter -f $freq - < <($sox -n -r22050 -c1 -b16 -t wav - synth 0 sine $tone) & )
-fi  
+    ( set +E; $pifm_sh -f $freq -t $tone -s $time & )
+fi

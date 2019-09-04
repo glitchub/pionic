@@ -31,9 +31,6 @@ runfor=$base/runfor/runfor
 i2cio=$base/i2cio/i2cio
 [ -x $i2cio ] || die "Require executable $i2cio"
 
-fm_transmitter=$base/FM_Transmitter_RPi3/fm_transmitter
-[ -x $fm_transmitter ] || die "Require executable $fm_transmitter"
-
 # path to media
 media=$base/cgi/media
 
