@@ -88,7 +88,7 @@ case "${1:-}" in
         # Try to fetch the fixture driver name, note local port 61080 redirects to server port 80
         # If we don't get a response then use the default
         echo "Requesting fixture from server"
-        fixture=$($curl "http://localhost:61080/cgi-bin/factory?service=fixture") 
+        fixture=$($curl "http://localhost:61080/cgi-bin/factory?service=fixture") || die "No response from server" 
         fixture=${fixture,,}
         [[ $fixture && $fixture != none ]] || fixture=default
         
