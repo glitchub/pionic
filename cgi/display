@@ -1,22 +1,13 @@
 #!/bin/bash
 source ${0%/*}/cgi.inc
 
-gm=$(type -P gm) || die "Requires executable gm"
-
-size=$($fbput -q) || die "Can't get framebuffer size"
-
-mono=$media/WenQuanYiMicroHeiMono.ttf
-[[ -f $mono ]] || die "Requires $mono"
-prop=$media/WenQuanYiMicroHei.ttf
-[[ -f $prop ]] || die "Requires $prop"
-
+command=clear
 fg=white
 bg=black
 point=20
 align=nw
-font=$mono
-command=clear
-overlay=0
+font=mono
+wrap=
 
 if (($#)); then
     command=$1
@@ -26,55 +17,32 @@ if (($#)); then
         arg=${o#*=}
         [[ $arg ]] || die "Invalid option $o"
         case $o in
-            fg=?*) fg=$arg;;
-            bg=?*) bg=$arg;;
-            size=?*|point=?*) point=$arg;;
-	    align=?*) align=$arg;;
-	    mono*) font=$mono;;
-	    prop*) font=$prop;;
-            badge) point=80; align=c; font=$prop;;
-	    overlay) overlay=1;;
-	    status) overlay=1; align=sw;;
-            *) die "Invalid option $o";;
+            fg=?*)              fg=$arg ;;
+            bg=?*)              bg=$arg ;;
+            size=?*|point=?*)   point=$arg ;;
+            align=?*)           align=$arg ;;
+            mono*)              font=mono ;;
+            prop*)              font=prop ;;
+            badge)              point=80; align=c; font=prop ;;
+            wrap)               wrap=-w ;; 
+            *)                  die "Invalid option $o" ;;
         esac
     done
 fi
 
 case $command in
     clear)
-        $gm convert -size $size xc:$bg -depth 8 RGB:- | $fbput -
+        $base/fbtools/fbclear -c $bg
         ;;
 
     image)
         image=-
         ((${CONTENT_LENGTH:-0})) || image=$media/colorbars.jpg
-        $gm convert $image -background $bg -flatten -resize $size! -depth 8 RGB:- | $fbput -
+        $base/fbtools/fbimage -c $bg -s $image
         ;;
 
     text)
-        case $align in
-            nw) gravity=northwest; offset="10,$point" ;;
-            ne) gravity=northeast; offset="10,$point" ;;
-            n*) gravity=north;     offset="0,$point"  ;;
-            w*) gravity=west;      offset="10,0"  ;;
-            c*) gravity=center;    offset="0,0"   ;;
-            e*) gravity=east;      offset="10,0"  ;;
-            sw) gravity=southwest; offset="10,-$point" ;;
-            se) gravity=southeast; offset="10,-$point" ;;
-            s*) gravity=south;     offset="0,-$point"  ;;
-            *) Invalid alignment $align;;
-        esac
-        tmp=$(mktemp -t display.XXXXXX)
-        trap "rm -f $tmp*" EXIT
-        # get stdin but strip the very last line feed
-        awk 'NR>1{print s}{s=$0}END{printf "%s",s}' > $tmp
-        if ((overlay)); then
-            $fbput -g $tmp.fb
-            source="-depth 8 RGB:$tmp.fb"
-        else
-            source="xc:$bg"
-        fi
-        $gm convert -size $size $source -fill $fg -font $font -pointsize $point -draw "gravity $gravity text $offset '@$tmp'" -depth 8 RGB:- | $fbput -
+        $base/fbtools/fbtext -c $fg:$bg -s $point -g $align -f $font $wrap -b1 -
         ;;
 
     *) die "Invalid command $command";;
