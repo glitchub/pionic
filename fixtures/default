@@ -12,15 +12,12 @@ station=$2
 
 echo "Default fixture driver"
 
-# Note -t1 -c272 -v1 is a screen touch
-$pionic/evdump/evdump -t1 -c272 -v1 mouse0 2>/dev/null | while true; do
+# Show default screen, refresh on two taps in one second
+while true; do
     printf "TEST STATION $station READY" | $pionic/cgi/display text fg=white bg=blue align=center point=40
-    read                        # wait for a touch
-    count=1                     # count them
     while true; do
-        printf "TEST STATION $station READY\nTouches=$count" | $pionic/cgi/display text fg=white bg=blue align=center point=40
-        read -t10 || break     # wait for another touch or timeout after 10 seconds
-        ((count++))
+        read || die "evdump unexpected EOF"
+        read -t1 && break
     done
-done 
+done < <($pionic/evdump/evdump -t1 -c272 -v1 mouse0 2>/dev/null)
 
