@@ -22,9 +22,6 @@ unset n o p
 base=$(realpath ${0%/*}/..)
 
 # pionic programs, not in path
-fbput=$base/fbput/fbput
-[ -x $fbput ] || die "Require executable $fbput"
-
 runfor=$base/runfor/runfor
 [ -x $runfor ] || die "require executable $runfor"
 

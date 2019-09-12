@@ -37,7 +37,7 @@ endif
 repos=https\://github.com/glitchub/rasping
 repos+=https\://github.com/glitchub/evdump
 repos+=https\://github.com/glitchub/runfor
-repos+=https\://github.com/glitchub/fbput
+repos+=https\://github.com/glitchub/fbtools
 repos+=https\://github.com/glitchub/pifm
 repos+=https\://github.com/glitchub/i2cio
 ifdef BEACON
@@ -45,10 +45,10 @@ repos+=https\://github.com/glitchub/beacon
 endif
 
 # apt packages to install
-packages=sox graphicsmagick omxplayer
+packages=sox omxplayer python-pgmagick
 
 # files to be tweaked
-files=/etc/rc.local /boot/config.txt
+files=/etc/rc.local /boot/config.txt /etc/hosts
 
 # rebuild everything
 .PHONY: default clean packages ${repos} ${files}
@@ -81,6 +81,18 @@ else ifeq (${CLEAN},2)
 	${APT} remove --autoremove --purge -y ${packages}
 endif
 
+# add hosts entries for DUT
+/etc/hosts:
+	sudo sed -i '/pionic start/,/pionic end/d' $@ # first delete the old
+ifndef CLEAN
+	printf "\n\
+# pionic start\n\
+$$SERVER_IP\\tfactory.server\n\
+$$LAN_IP\\tpionic.server\n\
+# pionic end\n\
+" | sudo sh -c 'cat >> $@'
+endif
+
 # auto-start pionic.sh
 /etc/rc.local:
 	sudo sed -i '/pionic/d' $@ # first delete the old
@@ -102,7 +114,7 @@ hdmi_blanking=0\n\
 hdmi_ignore_edid=0x5a000080\n\
 dtparam=i2c_arm=on\n\
 dtparam=spi=on\n\
-gpu_mem=16\n\
+gpu_mem=64\n\
 # avoid_warnings=1\n\
 overscan_left=-32\n\
 overscan_right=-32\n\
