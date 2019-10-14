@@ -17,12 +17,21 @@ FORWARD += 2222=192.168.111.10:22
 UNBLOCK = 22
 
 # IP range to be assigned by dhcp, in the form "firstIP, lastIP". Comment out to disable.
-DHCP_RANGE = 192.168.111.250, 192.168.111.254
+# DHCP_RANGE = 192.168.111.250, 192.168.111.254
 
-# If set (to anything), install beacon daemon. Comment out if DUTs have static IP
+# Uncomment to install beacon daemon. Comment out if DUTs have static IP.
 # BEACON = 1
 
+# Set to on to enable SPI interface, off to disable, comment out to leave as is
+SPI = on
+
+# Set to on to enable I2C interface, off to disable, comment out to leave as is
+I2C = on
+
 #### END USER CONFIGURATION
+
+# invoke raspi-config in non-interactive mode, "on" enables, any other disables
+raspi-config=sudo raspi-config nonint $1 $(if $(filter on,$2),0,1)
 
 # Make sure we're running the right code and are not root
 ifeq ($(shell grep "Raspberry Pi reference 2019-06-20" /etc/rpi-issue),)
@@ -39,7 +48,9 @@ repos+=https\://github.com/glitchub/evdump
 repos+=https\://github.com/glitchub/runfor
 repos+=https\://github.com/glitchub/fbtools
 repos+=https\://github.com/glitchub/pifm
+ifdef I2C
 repos+=https\://github.com/glitchub/i2cio
+endif
 ifdef BEACON
 repos+=https\://github.com/glitchub/beacon
 endif
@@ -48,14 +59,28 @@ endif
 packages=sox omxplayer python-pgmagick
 
 # files to be tweaked
-files=/etc/rc.local /boot/config.txt /etc/hosts
+files=/etc/rc.local /boot/config.txt /etc/hosts /etc/modules
 
 # rebuild everything
 .PHONY: default clean packages ${repos} ${files}
 
 default: packages ${repos} ${files}
-ifndef CLEAN
-	sudo systemctl enable ssh
+ifdef CLEAN
+# disable SPI and I2C if we enabled it
+ifdef SPI
+        $(call raspi-config,do_spi,off)
+endif
+ifdef I2C
+        $(call raspi-config,do_i2c,off)
+endif
+else
+# maybe enable SPI and I2C via raspi-config
+ifdef SPI
+        $(call raspi-config,do_spi,${SPI})
+endif
+ifdef I2C
+        $(call raspi-config,do_i2c,${I2C})
+endif
 	sync
 	@echo "Reboot to start pionic"
 endif
@@ -87,8 +112,8 @@ endif
 ifndef CLEAN
 	printf "\n\
 # pionic start\n\
-$$SERVER_IP\\tfactory.server\n\
-$$LAN_IP\\tpionic.server\n\
+${SERVER_IP}\\tfactory.server\n\
+${LAN_IP}\\tpionic.server\n\
 # pionic end\n\
 " | sudo sh -c 'cat >> $@'
 endif
@@ -112,8 +137,6 @@ hdmi_group=1\n\
 hdmi_mode=16 # 1920x1080\n\
 hdmi_blanking=0\n\
 hdmi_ignore_edid=0x5a000080\n\
-dtparam=i2c_arm=on\n\
-dtparam=spi=on\n\
 gpu_mem=64\n\
 # avoid_warnings=1\n\
 overscan_left=-32\n\
@@ -122,6 +145,18 @@ overscan_top=-32\n\
 overscan_bottom=-32\n\
 # pionic end\n\
 " | sudo sh -c 'cat >> $@'
+endif
+
+/etc/modules:
+	sudo sed -i '/pionic start/,/pionic end/d' $@
+ifndef CLEAN
+ifdef I2C
+	printf "\n\
+# pionic start\n\
+i2c-dev
+# pionic end\n\
+" | sudo sh -c 'cat >> $@'
+endif
 endif
 
 # Clean config files but don't remove packages or repos
