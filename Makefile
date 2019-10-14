@@ -59,7 +59,7 @@ endif
 packages=sox omxplayer python-pgmagick
 
 # files to be tweaked
-files=/etc/rc.local /boot/config.txt /etc/hosts /etc/modules
+files=/etc/rc.local /boot/config.txt /etc/hosts
 
 # rebuild everything
 .PHONY: default clean packages ${repos} ${files}
@@ -68,18 +68,18 @@ default: packages ${repos} ${files}
 ifdef CLEAN
 # disable SPI and I2C if we enabled it
 ifdef SPI
-        $(call raspi-config,do_spi,off)
+	$(call raspi-config,do_spi,off)
 endif
 ifdef I2C
-        $(call raspi-config,do_i2c,off)
+	$(call raspi-config,do_i2c,off)
 endif
 else
 # maybe enable SPI and I2C via raspi-config
 ifdef SPI
-        $(call raspi-config,do_spi,${SPI})
+	$(call raspi-config,do_spi,${SPI})
 endif
 ifdef I2C
-        $(call raspi-config,do_i2c,${I2C})
+	$(call raspi-config,do_i2c,${I2C})
 endif
 	sync
 	@echo "Reboot to start pionic"
@@ -145,18 +145,6 @@ overscan_top=-32\n\
 overscan_bottom=-32\n\
 # pionic end\n\
 " | sudo sh -c 'cat >> $@'
-endif
-
-/etc/modules:
-	sudo sed -i '/pionic start/,/pionic end/d' $@
-ifndef CLEAN
-ifdef I2C
-	printf "\n\
-# pionic start\n\
-i2c-dev
-# pionic end\n\
-" | sudo sh -c 'cat >> $@'
-endif
 endif
 
 # Clean config files but don't remove packages or repos
