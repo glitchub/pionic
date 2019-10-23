@@ -81,6 +81,8 @@ case "${1:-}" in
             sleep 1
         done
 
+        # start beacon if enabled
+        ! [ -d $here/beacon ] || pgrep -f beacon &>/dev/null || $here/beacon/beacon send br0 &
         # Try to fetch the fixture driver name, note local port 61080 redirects to server port 80
         # If we don't get a response then use the default
         echo "Requesting fixture from server"
@@ -90,10 +92,10 @@ case "${1:-}" in
 
         echo "Using fixture '$fixture'"
 
-        if [ -x $here/fixtures/$fixture ]; then
-            # use built-in fixture driver
+        if [ -x $here/fixtures/$fixture/fixture.sh ]; then
+            # use built-in fixture
             console off
-            $here/fixtures/$fixture $here $station
+            $here/fixtures/$fixture/fixture.sh $here $station
         else
             # otherwise try to download it
             rm -rf $tmp/fixtures
@@ -103,10 +105,10 @@ case "${1:-}" in
             $curl $fixtures | tar -C $tmp/fixtures -xz || die "Fetch failed"
             [[ -e $tmp/fixtures/$fixture ]] || die "Fixture driver '$fixture' not found"
             console off
-            $tmp/fixtures/$fixture $here $station
+            $tmp/fixtures/$fixture/fixture.sh $here $station
         fi
 
-        die "Fixture driver '$fixture' exit status $?"
+        die "Fixture '$fixture' exit status $?"
         ) &
         ;;
 

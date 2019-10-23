@@ -13,15 +13,15 @@ Options are:
 
     freq=XXX.X - transmit frequency in MHz, 88.1 to 107.9, default is 99.9
     tone=X     - modulation frequency in Hz, 10-8000, default is 1000
-    time=X     - transmit time in seconds, 0-120, default is 30. 0 just kills the current transmission. 
+    time=X     - transmit time in seconds, 0-120, default is 30. 0 just kills the current transmission.
 "
 
 sox=$(type -P sox) || die "Need executable sox"
 
-pifm=$base/pifm/pifm
+pifm=$pionic/pifm/pifm
 [ -x $pifm ] || die "Need executable $pifm"
 
-pifm_sh=$base/pifm/pifm.sh
+pifm_sh=$pionic/pifm/pifm.sh
 [ -x $pifm_sh ] || die "Need executable $pifm_sh"
 
 freq=99.9
@@ -33,7 +33,7 @@ time=30
     tone=*) tone=${a#*=}; echo $tone | awk '{exit !(match($1,/^[0-9]+$/) && $1 >= 10 && $1 <= 8000)}' || die "Invalid tone '$tone'";;
     time=*) time=${a#*=}; echo $time | awk '{exit !(match($1,/^[0-9]+$/) && $1 >= 0 && $1 <= 120)}' || die "Invalid time '$time'";;
     *) exit 1 # die "$usage"
-esac; done    
+esac; done
 
 pkill -f ${pifm##*/} || true
 if ((time)); then

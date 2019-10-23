@@ -1,6 +1,15 @@
 #!/bin/bash
 source ${0%/*}/cgi.inc
 
+fbclear=$pionic/fbtools/fbclear
+[ -x $fbclear ] || die "Need executable $fbclear"
+
+fbimage=$pionic/fbtools/fbimage
+[ -x $fbimage ] || die "Need executable $fbimage"
+
+fbtext=$pionic/fbtools/fbtext
+[ -x $fbtext ] || die "Need executable $fbtext"
+
 command=clear
 fg=white
 bg=black
@@ -32,17 +41,17 @@ fi
 
 case $command in
     clear)
-        $base/fbtools/fbclear -c $bg
+        $fbclear -c $bg
         ;;
 
     image)
         image=-
-        ((${CONTENT_LENGTH:-0})) || image=$base/cgi/media/colorbars.jpg
-        $base/fbtools/fbimage -c $bg -s $image
+        ((${CONTENT_LENGTH:-0})) || image=${0%/*}/colorbars.jpg
+        $fbimage -c $bg -s $image
         ;;
 
     text)
-        $base/fbtools/fbtext -c $fg:$bg -s $point -g $align -f $font $wrap -b1 -
+        $fbtext -c $fg:$bg -s $point -g $align -f $font $wrap -b1 -
         ;;
 
     *) die "Invalid command $command";;

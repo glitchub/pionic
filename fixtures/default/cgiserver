@@ -10,6 +10,8 @@ from CGIHTTPServer import CGIHTTPRequestHandler
 from cStringIO import StringIO
 import sys, os, getopt, re
 
+here=os.path.abspath(os.path.dirname(__file__))
+
 # die with a message
 def die(format, *args):
     sys.stderr.write((format+"\r\n") % args)
@@ -23,15 +25,12 @@ class cgihandler(CGIHTTPRequestHandler):
         return False
 
     def is_cgi(self):
-        # treat all requests as cgis in the directory containing this script
-        self.cgi_info = (os.path.dirname(__file__), self.path[1:])
+        # we only support cgi's, make sure it has .cgi extgension (if file
+        # doesn't exist then the request will fail later)
+        a, b, c = self.path[1:].partition('?') # first path char is '/'
+        if not a.endswith(".cgi"): a+=".cgi"
+        self.cgi_info = ('', a+b+c)
         return True
-
-    def is_executable(self, path):
-
-        # prevent recursion
-        if os.path.basename(path) == "cgiserver": return False # don't recurse!
-        return CGIHTTPRequestHandler.is_executable(self,path)
 
     # swallow logs if quiet
     def log_message(self, format, *args):
@@ -45,8 +44,6 @@ class cgihandler(CGIHTTPRequestHandler):
         self.log_message(self, format, *args)
 
     def run_cgi(self):
-        name, _, request = self.cgi_info[1].partition('?')
-
         self.wsave=self.wfile                       # replace output file with stringIO
         self.wfile=StringIO()
         self.logged=None                            # assume no errors will be logged
@@ -79,7 +76,7 @@ class cgihandler(CGIHTTPRequestHandler):
 
 # parse options
 try:
-    opts, args = getopt.getopt(sys.argv[1:],'d:p:b:l')
+    opts, args = getopt.getopt(sys.argv[1:],'p:b:l')
     assert len(args)==0
 except:
     die("""Usage:
@@ -88,34 +85,22 @@ except:
 
 Serve cgi scripts via http. Options are:
 
-    -p port         - port to listen on, instead of 8000
-    -b ad.dr.es.s   - IP address to bind to, default is don't bind
-    -l              - enable logging on stdout
+    -p port         - listen on specified port, instead of 8000
+    -l              - log everything to stdout
+
+CGI scripts must be in the same directory, with ".cgi" extension.
 """)
 
 cgihandler.quiet=True
 
-bind=""
 port=8000
-
 for opt, arg in opts:
-    if opt == '-d': pass # ignore legacy directory spec
-
     if opt == '-p':
         try:
-            port=int(arg)
-            assert 0<port<65536
+            port = int(arg)
+            assert 0 < port < 65536
         except:
             die("Invalid port '%s'", arg)
-
-    if opt == '-b':
-        bind=arg
-        try:
-            assert bind.count(".") == 3
-            for octet in bind.split('.'):
-                assert 0<=int(octet)<=255
-        except:
-            die("Invalid bind address '%s'", arg)
 
     if opt == '-l': cgihandler.quiet=False
 
@@ -123,6 +108,6 @@ for opt, arg in opts:
 for v in [k for k in os.environ]:
     del os.environ[v]
 
-if not cgihandler.quiet: print("Listening for requests on %s port %d in %s..."%("all interfaces" if bind=="" else bind, port, os.getcwd()))
+if not cgihandler.quiet: print("Serving %s on port %d..." % (here,port))
 
-BaseHTTPServer.HTTPServer((bind,port),cgihandler).serve_forever()
+BaseHTTPServer.HTTPServer(("",port),cgihandler).serve_forever()

@@ -18,8 +18,7 @@ done
 set -- "${o[@]}"
 unset n o p
 
-# pionic base directory
-base=$(realpath ${0%/*}/..)
+export pionic=~pi/pionic
 
 # output Content-type header if invoked via cgiserver
 [[ -v GATEWAY_INTERFACE ]] && printf "Content-type: text/plain\n\n"

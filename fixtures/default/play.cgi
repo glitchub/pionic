@@ -3,9 +3,8 @@ source ${0%/*}/cgi.inc
 
 ((!UID)) || die "Must be root!"
 
-# pionic programs, not in path
-runfor=$base/runfor/runfor
-[ -x $runfor ] || die "require executable $runfor"
+runfor=$pionic/runfor/runfor
+[ -x $runfor ] || die "Need executable $runfor"
 
 usage="Usage:
 
@@ -22,22 +21,23 @@ Options are:
 
 omxplayer=$(type -P omxplayer) || die "Need executable omxplayer"
 
-media=$base/cgi/media
-
-video=$media/colorbars.mp4
+here=${0%/}
+video=$here/colorbars.mp4
 time=30
 output="--display 5 -o hdmi"
 display=hdmi
 
 (($#)) && for a in "$@"; do case $a in
-    video=*) video=$media/${a#*=}; [ -f $video ] || die "No such file '$video'";;
+    video=*) video=$here/${a#*=};;
     time=*) time=${a#*=}; echo $time | awk '{exit !(match($1,/^[0-9]+$/) && $1 >= 0 && $1 <= 120)}' || die "Invalid time '$time'";;
     lcd) output="--display 4 -o local"; display=lcd;;
     *) exit 1 # die "$usage"
 esac; done
 
 pkill -f ${omxplayer##*/} || true
+
 if ((time)); then
+    [ -f $video ] || die "No such file '$video'"
     echo "Playing $video on $display for $time seconds"
     # close popen'd stdio or cgiserver will stall
     exec 0<&- 1>&- 2>&- 3>&- 4>&- 5>&- 6>&- 7>&- 8>&- 9>&-
