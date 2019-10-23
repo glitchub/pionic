@@ -3,6 +3,10 @@ source ${0%/*}/cgi.inc
 
 ((!UID)) || die "Must be root!"
 
+# pionic programs, not in path
+runfor=$base/runfor/runfor
+[ -x $runfor ] || die "require executable $runfor"
+
 usage="Usage:
 
     play [options]
@@ -17,6 +21,8 @@ Options are:
 "
 
 omxplayer=$(type -P omxplayer) || die "Need executable omxplayer"
+
+media=$base/cgi/media
 
 video=$media/colorbars.mp4
 time=30

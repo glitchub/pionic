@@ -45,7 +45,7 @@ case "${1:-}" in
         # store the subshell pid
         mkdir -p $tmp
         echo $BASHPID > $tmp/.pid
-        
+
         # after this point, kill shell children on exit and reinstate console
         trap 'exs=$?;
             kill $(jobs -p) &>/dev/null && wait $(jobs -p) || true;
@@ -69,8 +69,8 @@ case "${1:-}" in
             if ! [ -d /sys/class/net/eth1 ]; then
                 echo "USB ethernet is not attached"
                 wait=1
-            fi    
-            
+            fi
+
             if ! ipaddr br0 &>/dev/null; then
                 echo "Waiting for br0"
                 wait=1
@@ -81,17 +81,13 @@ case "${1:-}" in
             sleep 1
         done
 
-        # start daemons
-        pgrep -f cgiserver &>/dev/null || $here/cgiserver -p 80 -d ~pi/pionic/cgi &
-        ! [ -d $here/beacon ] || pgrep -f beacon &>/dev/null || $here/beacon/beacon send br0 &
-        
         # Try to fetch the fixture driver name, note local port 61080 redirects to server port 80
         # If we don't get a response then use the default
         echo "Requesting fixture from server"
-        fixture=$($curl "http://localhost:61080/cgi-bin/factory?service=fixture") || die "No response from server" 
+        fixture=$($curl "http://localhost:61080/cgi-bin/factory?service=fixture") || die "No response from server"
         fixture=${fixture,,}
         [[ $fixture && $fixture != none ]] || fixture=default
-        
+
         echo "Using fixture '$fixture'"
 
         if [ -x $here/fixtures/$fixture ]; then
@@ -108,8 +104,8 @@ case "${1:-}" in
             [[ -e $tmp/fixtures/$fixture ]] || die "Fixture driver '$fixture' not found"
             console off
             $tmp/fixtures/$fixture $here $station
-        fi  
-        
+        fi
+
         die "Fixture driver '$fixture' exit status $?"
         ) &
         ;;

@@ -1,5 +1,7 @@
 #!/bin/bash -eu
 
+# start cgiserver and beacon if installed, and then reset the display when touched
+
 # nuke children on exit
 trap 'x=$?; kill $(jobs -p) &>/dev/null && wait $(jobs -p) || true; exit $x' EXIT
 
@@ -10,7 +12,13 @@ die() { echo $@ >&2; exit 1; }
 pionic=$1
 station=$2
 
-echo "Default fixture driver"
+echo "Starting default fixture driver"
+
+# start daemons
+pgrep -f cgiserver &>/dev/null || $pionic/cgi/cgiserver -p 80 -d $pionic/cgi &
+if [ -d $pionic/beacon ]; then
+    pgrep -f beacon &>/dev/null || $pionic/beacon/beacon send br0 &
+fi
 
 # Show default screen, refresh on two taps in one second
 while true; do

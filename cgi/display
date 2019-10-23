@@ -24,7 +24,7 @@ if (($#)); then
             mono*)              font=mono ;;
             prop*)              font=prop ;;
             badge)              point=80; align=c; font=prop ;;
-            wrap)               wrap=-w ;; 
+            wrap)               wrap=-w ;;
             *)                  die "Invalid option $o" ;;
         esac
     done
@@ -37,7 +37,7 @@ case $command in
 
     image)
         image=-
-        ((${CONTENT_LENGTH:-0})) || image=$media/colorbars.jpg
+        ((${CONTENT_LENGTH:-0})) || image=$base/cgi/media/colorbars.jpg
         $base/fbtools/fbimage -c $bg -s $image
         ;;
 

@@ -21,16 +21,6 @@ unset n o p
 # pionic base directory
 base=$(realpath ${0%/*}/..)
 
-# pionic programs, not in path
-runfor=$base/runfor/runfor
-[ -x $runfor ] || die "require executable $runfor"
-
-i2cio=$base/i2cio/i2cio
-[ -x $i2cio ] || die "Require executable $i2cio"
-
-# path to media
-media=$base/cgi/media
-
 # output Content-type header if invoked via cgiserver
 [[ -v GATEWAY_INTERFACE ]] && printf "Content-type: text/plain\n\n"
 
