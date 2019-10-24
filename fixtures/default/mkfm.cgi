@@ -18,9 +18,6 @@ Options are:
 
 sox=$(type -P sox) || die "Need executable sox"
 
-pifm=$pionic/pifm/pifm
-[ -x $pifm ] || die "Need executable $pifm"
-
 pifm_sh=$pionic/pifm/pifm.sh
 [ -x $pifm_sh ] || die "Need executable $pifm_sh"
 
@@ -35,9 +32,12 @@ time=30
     *) exit 1 # die "$usage"
 esac; done
 
-pkill -f ${pifm##*/} || true
+pkill -f pifm || true
+rm -f /tmp/mkfm.out
+
 if ((time)); then
+    echo "Starting '$pifm_sh -f $freq -t $tone -s $time'"
     # close popen'd stdio or cgiserver will stall
-    [ -t 1 ] || exec 0<&- 1>&- 2>&- 3>&- 4>&- 5>&- 6>&- 7>&- 8>&- 9>&-
-    ( set +E; $pifm_sh -f $freq -t $tone -s $time & )
+    exec 0<&- 1>&- 2>&- 3>&- 4>&- 5>&- 6>&- 7>&- 8>&- 9>&-
+    $pifm_sh -f $freq -t $tone -s $time > /tmp/mkfm.out 2>&1 &
 fi

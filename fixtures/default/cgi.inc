@@ -4,7 +4,7 @@ die() { echo "$*" >&2; exit 1; }
 
 # abort on command error or undefined variable
 set -o pipefail -E -u
-trap 'echo "$0: line $LINENO: exit status $?" >&9; exit 1' ERR
+trap 'echo "$0: line $LINENO: exit status $?" >&2; exit 1' ERR
 
 # split QUERY_STRING to command line
 [[ -v QUERY_STRING ]] && { IFS='&'; set -- $QUERY_STRING; IFS=$' \t\n'; }

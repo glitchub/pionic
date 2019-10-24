@@ -21,7 +21,7 @@ Options are:
 
 omxplayer=$(type -P omxplayer) || die "Need executable omxplayer"
 
-here=${0%/}
+here=${0%/*}
 video=$here/colorbars.mp4
 time=30
 output="--display 5 -o hdmi"

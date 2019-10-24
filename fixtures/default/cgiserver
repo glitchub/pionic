@@ -10,8 +10,6 @@ from CGIHTTPServer import CGIHTTPRequestHandler
 from cStringIO import StringIO
 import sys, os, getopt, re
 
-here=os.path.abspath(os.path.dirname(__file__))
-
 # die with a message
 def die(format, *args):
     sys.stderr.write((format+"\r\n") % args)
@@ -40,8 +38,8 @@ class cgihandler(CGIHTTPRequestHandler):
     # remember first log_error, so stderr output error has priority over exit code
     def log_error(self, format, *args):
         if self.logged is None:
-            self.logged=(format%args).strip()
-        self.log_message(self, format, *args)
+            self.logged=(format % args).strip()
+        self.log_message(format, *args)
 
     def run_cgi(self):
         self.wsave=self.wfile                       # replace output file with stringIO
@@ -76,7 +74,7 @@ class cgihandler(CGIHTTPRequestHandler):
 
 # parse options
 try:
-    opts, args = getopt.getopt(sys.argv[1:],'p:b:l')
+    opts, args = getopt.getopt(sys.argv[1:],'d:p:l')
     assert len(args)==0
 except:
     die("""Usage:
@@ -85,6 +83,7 @@ except:
 
 Serve cgi scripts via http. Options are:
 
+    -d directory    - directory to serve files from, default is current directory
     -p port         - listen on specified port, instead of 8000
     -l              - log everything to stdout
 
@@ -95,6 +94,12 @@ cgihandler.quiet=True
 
 port=8000
 for opt, arg in opts:
+    if opt == '-d':
+        try:
+            os.chdir(arg)
+        except:
+            die("Invalid root '%s'" % arg)
+
     if opt == '-p':
         try:
             port = int(arg)
@@ -108,6 +113,6 @@ for opt, arg in opts:
 for v in [k for k in os.environ]:
     del os.environ[v]
 
-if not cgihandler.quiet: print("Serving %s on port %d..." % (here,port))
+if not cgihandler.quiet: print("Serving %s on port %d..." % (os.getcwd(),port))
 
 BaseHTTPServer.HTTPServer(("",port),cgihandler).serve_forever()
