@@ -2,117 +2,99 @@
 
 # A tiny CGI server
 
-# Subclass CGITTPREquestHandler to properly return "Status: XXX" headers or
-# status 500 if a cgi script has non-zero exit status or writes to stderr
-from __future__ import print_function
-import BaseHTTPServer
+from BaseHTTPServer import HTTPServer
 from CGIHTTPServer import CGIHTTPRequestHandler
-from cStringIO import StringIO
-import sys, os, getopt, re
+from SocketServer import ForkingMixIn
+import sys, os, subprocess
 
-# die with a message
-def die(format, *args):
-    sys.stderr.write((format+"\r\n") % args)
-    sys.exit(1)
-
+# Subclass CGIHTTPRequestHandler to serve programs named xxx.cgi in the current
+# directory as CGIs. 
+#
+# HTTP query params are given as command line arguments, and posted data is
+# passed on stdin.  
+#
+# If the script has a non-zero exit code, the returns status "500 Error %d: s",
+# otherwise returns status "200 OK"
+#
+# In either case the script stderr/stdout is returned as Content-Type:
+# text/plain. 
 class cgihandler(CGIHTTPRequestHandler):
-    have_fork = False # force run_cgi to use a subprocess
-
-    # no special treatment for *.py
-    def is_python(self, path):
-        return False
-
-    def is_cgi(self):
-        # we only support cgi's, make sure it has .cgi extgension (if file
-        # doesn't exist then the request will fail later)
-        a, b, c = self.path[1:].partition('?') # first path char is '/'
-        if not a.endswith(".cgi"): a+=".cgi"
-        self.cgi_info = ('', a+b+c)
-        return True
-
-    # swallow logs if quiet
-    def log_message(self, format, *args):
-        if not self.quiet:
-            CGIHTTPRequestHandler.log_message(self, format, *args)
-
-    # remember first log_error, so stderr output error has priority over exit code
-    def log_error(self, format, *args):
-        if self.logged is None:
-            self.logged=(format % args).strip()
-        self.log_message(format, *args)
+    # force every request through run_cgi   
+    def is_cgi(self): return True
 
     def run_cgi(self):
-        self.wsave=self.wfile                       # replace output file with stringIO
-        self.wfile=StringIO()
-        self.logged=None                            # assume no errors will be logged
-        CGIHTTPRequestHandler.run_cgi(self)
-        self.wfile.seek(0)
-        status=self.wfile.readline()                # get status line
-        rewind=self.wfile.tell()                    # remember rewind position
-        if status.split(' ')[1].strip() == '200':   # if 'normal' exit
-            if self.logged is not None:
-                # run_cgi invoked log_error, return as status 500
-                status='%s 500 %s\r\n' % (self.protocol_version, self.logged)
-            else:
-                # scan headers
-                for line in self.wfile:
-                    if line.strip() == '':
-                        # end of headers
-                        break
-                    if not re.match('^\S+:.*\S',line):
-                        # require form 'key: value'
-                        status=self.protocol_version + ' 500 malformed header\r\n'
-                        break;
-                    if line.startswith('Status:'):
-                        # if 'Status: something', use it
-                        status='%s %s\r\n' % (self.protocol_version, line.split(':',1)[1].strip())
+        cmd, _, args = self.path[1:].partition('?')
+        # append .cgi if needed
+        if not cmd.endswith('.cgi'): cmd += '.cgi'                
 
-        self.wsave.write(status)
-        self.wsave.write(self.wfile.getvalue())
-        self.wfile.close()
-        self.wfile=self.wsave
+        # it must be in the current directory
+        if cmd.find('/') >= 0 or not os.path.isfile(cmd): 
+            self.send_error(403, "No such command '%s'" % cmd)
+            return
 
-# parse options
-try:
-    opts, args = getopt.getopt(sys.argv[1:],'d:p:l')
-    assert len(args)==0
-except:
-    die("""Usage:
+        # split the args on '&' and then replace '+' with space    
+        # XXX this is simplistic
+        args = [a.replace('+',' ') for a in args.split('&')]
+        command=[cmd, *args]
 
-    cgiserver [options]
+        self.log_message("Running ",command)
+        input = None
+        if self.command.lower() == "post":
+            # slurp up post data 
+            try:
+                length = int(self.headers.getheader('content-length'))
+                if length > 0: input = self.rfile.read(length)
+            except:
+                self.send_error(403, "Invalid POST input")
+        
+        # flush unexpected input
+        while select.select([self.rfile._sock], [], [], 0)[0]:
+            if not self.rfile._sock.recv(1):
+                break
 
-Serve cgi scripts via http. Options are:
+        # ok do it
+        p = subprocess.Popen(command, stdin = subprocess.PIPE, stdout = subprocess.PIPE,   stderr = subprocess.STDOUT, env = os.environ)
+        output = p.communicate(data).strip()
+        status = p.returncode
+        p.stdout.close()
+        if status:
+            self.log_error("CGI exit status %d" % status)
+            self.send_response(500, "Exit status %d" % status)
+            self.send_header("Content-type: text/plain");
+            self.end_headers()
+            self.wfile.write(stdout)
+            if stderr: self.wfile.write("stderr:\r\n",stderr)
+            self.wfile.write(stderr)
+            return
+        self.log_message("CGI exit OK") 
+        self.send_response(200, "Script output follows")
+        self.send_header("Content-type: text/plain");
+        self.end_headers()
+        self.wfile.write(stdout)
 
-    -d directory    - directory to serve files from, default is current directory
-    -p port         - listen on specified port, instead of 8000
-    -l              - log everything to stdout
+# Fork connections
+class httpserver(ForkingMixIn,HTTPServer): pass
 
-CGI scripts must be in the same directory, with ".cgi" extension.
-""")
+def start(chroot=None, port=8000, functions=None):
+    for v in [k for k in os.environ]: del os.environ[v]     # purge environment
+    os.chdir(chroot)                                        # change to directory
+    httpserver(('',port),cgihandler).serve_forever()        # start
 
-cgihandler.quiet=True
+if __name__ == "__main__":
+    usage = """
+Usage:
 
-port=8000
-for opt, arg in opts:
-    if opt == '-d':
-        try:
-            os.chdir(arg)
-        except:
-            die("Invalid root '%s'" % arg)
+    cgiserver directory [port] [2> logfile]
 
-    if opt == '-p':
-        try:
-            port = int(arg)
-            assert 0 < port < 65536
-        except:
-            die("Invalid port '%s'", arg)
+Serve scripts in specified directory as CGIs.  The script sees query params are
+command line arguments and posted data is passed on stdin.  If port is not
+specified, use port 8000.
 
-    if opt == '-l': cgihandler.quiet=False
+CGIs must be executable and have the ".cgi" extension. The ".cgi" will be appended to
+all queries if necessary.
 
-# delete environment
-for v in [k for k in os.environ]:
-    del os.environ[v]
-
-if not cgihandler.quiet: print("Serving %s on port %d..." % (os.getcwd(),port))
-
-BaseHTTPServer.HTTPServer(("",port),cgihandler).serve_forever()
+Logs to stderr, redirect as needed. 
+"""
+    chroot = sys.argv[1]
+    port = int(*sys.argv[2:3] or 8000)
+    start(chroot, port)
