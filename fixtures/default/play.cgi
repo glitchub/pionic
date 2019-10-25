@@ -1,6 +1,8 @@
 #!/bin/bash
 
-die() { echo $0: $* >&2; exit 1; }
+me=${0##*/}
+here=${0%/*}
+die() { echo $me: $* >&2; exit 1; }
 set -o pipefail -E -u
 trap 'die "line $LINE: exit status $?"' ERR
 
@@ -15,7 +17,6 @@ runfor=$PIONIC/runfor/runfor
 omxplayer=$(type -P omxplayer) || die "Need executable omxplayer"
 
 # video files arein the same directory as this script
-here=${0%/*}
 video=$here/colorbars.mp4
 time=30
 output="--display 5 -o hdmi"

@@ -1,12 +1,19 @@
 #!/bin/bash
 # Dump the CGI environment
 
-die() { echo $0: $* >&2; exit 1; }
+me=${0##*/}
+here=${0%/*}
+die() { echo $me: $* >&2; exit 1; }
 set -o pipefail -E -u
 trap 'die "line $LINE: exit status $?"' ERR
 
+echo I am $me
 echo This is to STDOUT
 echo This is to STDERR >&2
+
+echo -------------------------------
+
+ls -al $here
 
 echo -------------------------------
 

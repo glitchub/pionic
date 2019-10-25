@@ -31,18 +31,18 @@ evdump=$PIONIC/evdump/evdump
 
 echo "Starting CGI server"
 pkill -f cgiserver &>/dev/null || true
-cd ${0%/*}
-# configure cgi path
-env -i PATH=$PATH STATION=$STATION PIONIC=$PIONIC ./cgiserver -p 80 &
+env -i PATH=$PATH STATION=$STATION PIONIC=$PIONIC ./cgiserver ${0%/*} 80 &
 sleep 1
 pgrep -f cgiserver &>/dev/null || die "cgiserver did not start"
 
-# Show default screen, refresh on two taps within one second
-echo "Starting logo loop"
-while true; do
-    printf "TEST STATION $STATION READY" | $fbtext -cwhite:blue -gc -s40 -
+if [ -e /dev/input/mouse0 ]; then
+    # Show default screen, refresh on two taps within one second
+    echo "Starting logo loop"
     while true; do
-        read || die "evdump unexpected EOF"
-        read -t1 && break
-    done
-done < <($evdump -t1 -c272 -v1 mouse0 2>/dev/null)
+        printf "TEST STATION $STATION READY" | $fbtext -cwhite:blue -gc -s40 -
+        while true; do
+            read || die "evdump unexpected EOF"
+            read -t1 && break
+        done
+    done < <($evdump -t1 -c272 -v1 mouse0 2>/dev/null)
+fi

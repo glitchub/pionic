@@ -1,7 +1,9 @@
 #!/bin/bash
 # Read a barcode from /dev/ttyACM0
 
-die() { echo $0: $* >&2; exit 1; }
+me=${0##*/}
+here=${0%/*}
+die() { echo $me: $* >&2; exit 1; }
 set -o pipefail -E -u
 trap 'die "line $LINE: exit status $?"' ERR
 

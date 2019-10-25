@@ -72,7 +72,7 @@ class cgihandler(CGIHTTPRequestHandler):
         argv = [cmd]+decode(args)
         self.log_message("Running %s", str(argv))
         env=os.environ
-        env['CONTENT_LENGTH']=0 if input is None else len(input)
+        env['CONTENT_LENGTH']=str(0 if input is None else len(input))
         p = subprocess.Popen(argv, stdin = subprocess.PIPE, stdout = subprocess.PIPE, stderr = subprocess.STDOUT, env=env)
         output = p.communicate(input)[0]
         p.stdout.close()
