@@ -1,4 +1,4 @@
-#!/bin/bash -eu
+#!/bn/bash -eu
 
 # This starts the test station operation. It runs in background at boot.
 
@@ -95,7 +95,7 @@ case "${1:-}" in
         if [ -x $here/fixtures/$fixture/fixture.sh ]; then
             # use built-in fixture
             console off
-            $here/fixtures/$fixture/fixture.sh $station
+            $here/fixtures/$fixture/fixture.sh $here $station
         else
             # otherwise try to download it
             rm -rf $tmp/fixtures

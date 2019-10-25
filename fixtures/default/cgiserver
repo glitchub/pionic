@@ -5,7 +5,7 @@
 from BaseHTTPServer import HTTPServer
 from CGIHTTPServer import CGIHTTPRequestHandler
 from SocketServer import ForkingMixIn
-import sys, os, subprocess, select
+import sys, os, subprocess, select, string
 
 # Given an url argument string with '+' and '%XX' escapes, and multiple
 # arguments separated by '&', return list of decoded args with arbitrary
@@ -25,39 +25,34 @@ def decode(url):
     # return non-null args
     return filter(len, args)
 
-# Subclass CGIHTTPRequestHandler to serve programs named xxx.cgi in the current
-# directory as CGIs.
-#
-# HTTP query params are given as command line arguments, and posted data is
-# passed on stdin.
-#
-# If the script has a non-zero exit code, the returns status "500 Exit status X: text",
-# otherwise returns status "200 OK"
-#
-# In either case the script stderr/stdout is returned as Content-Type:
-# text/plain.
 class cgihandler(CGIHTTPRequestHandler):
-    # force every request through run_cgi
+    # Force all requests through run_cgi
     def is_cgi(self): return True
 
     def run_cgi(self):
-        # split /cmd?args to xxx and yyy
+        # split /cmd?args
         cmd, _, args = self.path[1:].partition('?')
-        # append .cgi if needed
-        if not cmd.endswith('.cgi'): cmd += '.cgi'
-        # cmd must be in the current directory
-        if cmd.find('/') >= 0:
-            self.send_error(403, "Invalid command %r" % cmd)
+
+        if not cmd:
+            self.send_error(403, "Invalid request")
             return
+
+        # reject bogus characters
+        for c in cmd:
+            if c not in string.ascii_letters+string.digits+'.-_':
+                self.send_error(403, "Invalid command name %r" % cmd)
+                return
+
         # give it a path
         cmd=os.getcwd()+'/'+cmd
+
+        # append .cgi if needed
+        if not cmd.endswith('.cgi'): cmd += '.cgi'
+
+        # executable?
         if not os.path.isfile(cmd) or not os.access(cmd, os.X_OK):
             self.send_error(403, "No such executable %r" % cmd)
             return
-        if os.path.islink(cmd):
-            l=os.path.realpath(cmd)
-            self.log_message("Following %r to %r",cmd,l)
-            cmd=l
 
         input = None
         if self.command.lower() == "post":
@@ -73,27 +68,27 @@ class cgihandler(CGIHTTPRequestHandler):
             if not self.rfile._sock.recv(1):
                 break
 
-        # do it
+        # execute and capture stderr/stdout
         argv = [cmd]+decode(args)
-        self.log_message("Starting %s", str(argv))
-        p = subprocess.Popen(argv, stdin = subprocess.PIPE, stdout = subprocess.PIPE, stderr = subprocess.STDOUT, env = {})
+        self.log_message("Running %s", str(argv))
+        env=os.environ
+        env['CONTENT_LENGTH']=0 if input is None else len(input)
+        p = subprocess.Popen(argv, stdin = subprocess.PIPE, stdout = subprocess.PIPE, stderr = subprocess.STDOUT, env=env)
         output = p.communicate(input)[0]
-        status = p.returncode
         p.stdout.close()
+        status = p.returncode
         if status:
-            try:
-                last=' '.join(output.strip().splitlines()[-1].split())
-            except IndexError:
-                last='<no output>'
-            # propogate error as status 500
+            # propagate error as status 500
+            last = '<no output>'
+            if output: last = ' '.join(output.strip().splitlines()[-1].split())
             self.log_error("%r exit %d: %s", cmd, status, last)
-            self.send_response(500, "Exit %d: %s" % (status, last))
+            self.send_response(500, "exit %d: %s" % (status, last))
         else:
             # else status 200
             self.log_message("%r OK", cmd)
             self.send_response(200, "OK")
 
-        # anyway, paste on the output
+        # anyway, pdd the output
         self.send_header("Content-type","text/plain");
         self.end_headers()
         self.wfile.write(output)
@@ -101,7 +96,7 @@ class cgihandler(CGIHTTPRequestHandler):
 # Fork connections
 class httpserver(ForkingMixIn,HTTPServer): pass
 
-def start(chroot=None, port=8000, functions=None):
+def start(chroot=None, port=8000, environ={}):
     os.chdir(chroot)                                        # change to directory
     httpserver(('',port),cgihandler).serve_forever()        # start
 
@@ -109,16 +104,25 @@ if __name__ == "__main__":
     usage = """
 Usage:
 
-    cgiserver directory [port] [2> logfile]
+    cgiserver chroot [port] [2> logfile]
 
-Serve scripts in specified directory as CGIs.  The script sees query params are
-command line arguments and posted data is passed on stdin.  If port is not
-specified, use port 8000.
+Process HTTP requests in form 'http://host:port/name[.cgi][?param1]...&paramX]]'.
 
-CGIs must be executable and have the ".cgi" extension. The ".cgi" will be appended to
-all queries if necessary.
+If a program 'name.cgi' exists in the specified chroot directory, then it is
+executed with query params split into command line arguments. POST data, if
+any, is passed on stdin.
 
-Logs to stderr, redirect as needed.
+If the program exit status is zero, the HTTP return status is "200 OK".
+
+Otherwise the HTTP return status is "500 exit X: xxxx", where X is the exit
+status and xxxx is the last line of output from the program.
+
+In either case the program's stderr/stdout is returned as Content-Type: text/plain.
+
+If not specified, the default port is 8000.
+
+cgiserver writes logs to stderr, redirect as needed.
+
 """
     chroot = sys.argv[1]
     try:

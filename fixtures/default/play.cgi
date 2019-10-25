@@ -1,26 +1,20 @@
 #!/bin/bash
-source ${0%/*}/cgi.inc
 
-((!UID)) || die "Must be root!"
+die() { echo $0: $* >&2; exit 1; }
+set -o pipefail -E -u
+trap 'die "line $LINE: exit status $?"' ERR
 
-runfor=$pionic/runfor/runfor
+runfor=$PIONIC/runfor/runfor
 [ -x $runfor ] || die "Need executable $runfor"
 
-usage="Usage:
-
-    play [options]
-    -or-
-    curl http://172.31.255.1/play[?option[&option...]]
-
-Options are:
-
-    video=file  - file to play, default is coloarbars.mp4
-    time=X      - play time in seconds, 0-120, default is 30. 0 just kills the current play.
-    lcd         - if specified, output on lcd instead of hdmi
-"
+# Options are:
+#     video=file  - file to play, default is coloarbars.mp4
+#     time=X      - play time in seconds, 0-120, default is 30. 0 just kills the current play.
+#     lcd         - if specified, output on lcd instead of hdmi
 
 omxplayer=$(type -P omxplayer) || die "Need executable omxplayer"
 
+# video files arein the same directory as this script
 here=${0%/*}
 video=$here/colorbars.mp4
 time=30
@@ -31,7 +25,7 @@ display=hdmi
     video=*) video=$here/${a#*=};;
     time=*) time=${a#*=}; echo $time | awk '{exit !(match($1,/^[0-9]+$/) && $1 >= 0 && $1 <= 120)}' || die "Invalid time '$time'";;
     lcd) output="--display 4 -o local"; display=lcd;;
-    *) exit 1 # die "$usage"
+    *) die "Invalid option '$a'";;
 esac; done
 
 pkill -f ${omxplayer##*/} || true

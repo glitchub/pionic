@@ -1,7 +1,9 @@
 #!/bin/bash
 # Read a barcode from /dev/ttyACM0
 
-source ${0%/*}/cgi.inc
+die() { echo $0: $* >&2; exit 1; }
+set -o pipefail -E -u
+trap 'die "line $LINE: exit status $?"' ERR
 
 [ -c /dev/ttyACM0 ] || die "No /dev/ttyAMC0, scanner not attached?"
 

@@ -1,13 +1,17 @@
 #!/bin/bash
-source ${0%/*}/cgi.inc
+# clear display or write image or text
 
-fbclear=$pionic/fbtools/fbclear
+die() { echo $0: $* >&2; exit 1; }
+set -o pipefail -E -u
+trap 'die "line $LINE: exit status $?"' ERR
+
+fbclear=$PIONIC/fbtools/fbclear
 [ -x $fbclear ] || die "Need executable $fbclear"
 
-fbimage=$pionic/fbtools/fbimage
+fbimage=$PIONIC/fbtools/fbimage
 [ -x $fbimage ] || die "Need executable $fbimage"
 
-fbtext=$pionic/fbtools/fbtext
+fbtext=$PIONIC/fbtools/fbtext
 [ -x $fbtext ] || die "Need executable $fbtext"
 
 command=clear
