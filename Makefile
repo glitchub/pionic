@@ -48,9 +48,7 @@ repos+=https\://github.com/glitchub/evdump
 repos+=https\://github.com/glitchub/runfor
 repos+=https\://github.com/glitchub/fbtools
 repos+=https\://github.com/glitchub/pifm
-ifdef I2C
-repos+=https\://github.com/glitchub/i2cio
-endif
+repos+=https\://github.com/glitchub/plio
 ifdef BEACON
 repos+=https\://github.com/glitchub/beacon
 endif
@@ -89,9 +87,9 @@ endif
 ${repos}: packages
 ifndef CLEAN
 	if [ -d $(notdir $@) ]; then git -C $(notdir $@) pull; else git clone $@; fi
-	make -C $(notdir $@) $(if $(findstring rasping,$@),UNBLOCK="$(strip ${UNBLOCK})" LAN_IP="$(strip ${LAN_IP})" FORWARD="$(strip ${FORWARD})" DHCP_RANGE="$(strip ${DHCP_RANGE})")
+	! [ -f $(notdir $@)/Makefile ] || make -C $(notdir $@) $(if $(findstring rasping,$@),UNBLOCK="$(strip ${UNBLOCK})" LAN_IP="$(strip ${LAN_IP})" FORWARD="$(strip ${FORWARD})" DHCP_RANGE="$(strip ${DHCP_RANGE})")
 else
-	make -C $(notdir $@) clean || true
+	! [ -f $(notdir $@)/Makefile ] || make -C $(notdir $@) clean || true
 ifeq (${CLEAN},2)
 	rm -rf $(notdir $@)
 endif

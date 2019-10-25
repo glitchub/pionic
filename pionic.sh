@@ -103,7 +103,7 @@ case "${1:-}" in
             fixtures="http://localhost:61080/fixtures.tar.gz"
             echo "Fetching $fixtures..."
             $curl $fixtures | tar -C $tmp/fixtures -xz || die "Fetch failed"
-            [[ -e $tmp/fixtures/$fixture ]] || die "Fixture driver '$fixture' not found"
+            [ -x $tmp/fixtures/$fixture/fixture.sh ] || die "Fixture driver '$fixture' not found"
             console off
             $tmp/fixtures/$fixture/fixture.sh $here $station
         fi
