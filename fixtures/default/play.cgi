@@ -1,8 +1,6 @@
 #!/bin/bash
 
-me=${0##*/}
-here=${0%/*}
-die() { echo $me: $* >&2; exit 1; }
+die() { echo $* >&2; exit 1; }
 set -o pipefail -E -u
 trap 'die "line $LINE: exit status $?"' ERR
 
@@ -16,14 +14,14 @@ runfor=$PIONIC/runfor/runfor
 
 omxplayer=$(type -P omxplayer) || die "Need executable omxplayer"
 
-# video files arein the same directory as this script
-video=$here/colorbars.mp4
+# video files are in BASE directory (same directory as this script)
+video=$BASE/colorbars.mp4
 time=30
 output="--display 5 -o hdmi"
 display=hdmi
 
 (($#)) && for a in "$@"; do case $a in
-    video=*) video=$here/${a#*=};;
+    video=*) video=$BASE/${a#*=};;
     time=*) time=${a#*=}; echo $time | awk '{exit !(match($1,/^[0-9]+$/) && $1 >= 0 && $1 <= 120)}' || die "Invalid time '$time'";;
     lcd) output="--display 4 -o local"; display=lcd;;
     *) die "Invalid option '$a'";;

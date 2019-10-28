@@ -1,4 +1,4 @@
-#!/bn/bash -eu
+#!/bin/bash -eu
 
 # This starts the test station operation. It runs in background at boot.
 

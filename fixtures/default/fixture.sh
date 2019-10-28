@@ -13,6 +13,7 @@ die() { echo $@ >&2; exit 1; }
 
 PIONIC=$1
 STATION=$2
+BASE=$(realpath ${0%/*})
 
 # nuke children on exit
 trap 'x=$?;
@@ -22,21 +23,22 @@ trap 'x=$?;
       (($x)) && echo EXIT $x;
       exit $x' EXIT
 
-echo "Station ID is $STATION"
-
 fbtext=$PIONIC/fbtools/fbtext
 [ -x $fbtext ] || die " Need executable $fbtext"
 
 evdump=$PIONIC/evdump/evdump
 [ -x $evdump ] || die "Need executable $evdump"
 
-echo "Starting CGI server"
+cgiserver=$BASE/cgiserver
+[ -x $cgiserver ] || die "Need executable $cgiserver"
+
+echo "Starting CGI server on station $STATION"
 pkill -f cgiserver &>/dev/null || true
-env -i PATH=$PATH STATION=$STATION PIONIC=$PIONIC ./cgiserver ${0%/*} 80 2> /dev/null &
+env -i BASE=$BASE PATH=$PATH STATION=$STATION PIONIC=$PIONIC $cgiserver $BASE 80 2>&1 | logger &
 sleep 1
 pgrep -f cgiserver &>/dev/null || die "cgiserver did not start"
 
-logo() { printf "TEST STATION $STATION READY" | $fbtext -cwhite:blue -gc -s40 -; }
+logo() { printf "TEST STATION $STATION READY" | $fbtext -cwhite:blue -gc -s40 -b1 -; }
 
 if [ -e /dev/input/mouse0 ]; then
     # We have touch, show logo and refresh on two taps within one second
