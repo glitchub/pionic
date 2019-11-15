@@ -132,6 +132,7 @@ endif
 /boot/config.txt:
 	sudo sed -i '/pionic start/,/pionic end/d' $@ # first delete the old
 ifndef CLEAN
+ifneq (${SERVER_IP},)
 	printf "\
 # pionic start\n\
 [all]\n\
@@ -148,6 +149,7 @@ overscan_top=-32\n\
 overscan_bottom=-32\n\
 # pionic end\n\
 " | sudo sh -c 'cat >> $@'
+endif
 endif
 
 # Clean config files but don't remove packages or repos
