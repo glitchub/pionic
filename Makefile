@@ -23,9 +23,8 @@ ifdef CLEAN
 SERVER_IP=xxx
 BEACON=on
 endif
-ifeq (${SERVER_IP},)
-$(warning SERVER_IP not defined, installing pionic in local mode)
-else
+
+ifneq (${SERVER_IP},)
 # Forward 61080 and 61443 to the factory server
 FORWARD += 61080=${SERVER_IP}:80 61443=${SERVER_IP}:443 # forward from DUT to server
 endif
