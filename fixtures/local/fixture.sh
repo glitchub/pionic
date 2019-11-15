@@ -17,16 +17,15 @@ BASE=$(realpath ${0%/*})
 trap 'x=$?;
       set +eu;
       kill $(jobs -p) &>/dev/null && wait $(jobs -p);
-      $PIONIC/fbtools/fbclear
       (($x)) && echo EXIT $x;
       exit $x' EXIT
 
 cgiserver=$BASE/cgiserver
 [ -x $cgiserver ] || die "Need executable $cgiserver"
 
-echo "Starting CGI serverON"
+echo "Starting CGI server"
 pkill -f cgiserver &>/dev/null || true
-env -i BASE=$BASE PATH=$PATH STATION=$STATION PIONIC=$PIONIC $cgiserver $BASE 80 2>&1 | logger &
+env -i BASE=$BASE PATH=$PATH PIONIC=$PIONIC $cgiserver $BASE 80 2>&1 | logger &
 sleep 1
 pgrep -f cgiserver &>/dev/null || die "cgiserver did not start"
 wait
