@@ -18,6 +18,11 @@ $(error Must define LAN_IP)
 endif
 
 SERVER_IP:=$(strip ${SERVER_IP})
+ifdef CLEAN
+# force full clean
+SERVER_IP=xxx
+BEACON=on
+endif
 ifeq (${SERVER_IP},)
 $(warning SERVER_IP not defined, installing pionic in local mode)
 else
