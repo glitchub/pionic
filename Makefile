@@ -10,7 +10,7 @@ $(error Must not be run as root))
 endif
 
 # Load the configuration file
-import pionic.cfg
+include pionic.cfg
 
 LAN_IP:=$(strip ${LAN_IP})
 ifeq (${LAN_IP},)
