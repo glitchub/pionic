@@ -41,17 +41,22 @@ raspi-config=sudo raspi-config nonint $1 $(if $(filter on,$2),0,1)
 
 # git repos to fetch and build, note the ":" must be escaped
 repos=https\://github.com/glitchub/rasping
-repos+=https\://github.com/glitchub/evdump
 repos+=https\://github.com/glitchub/runfor
-repos+=https\://github.com/glitchub/fbtools
 repos+=https\://github.com/glitchub/pifm
 repos+=https\://github.com/glitchub/plio
+ifneq (${SERVER_IP},)
+repos+=https\://github.com/glitchub/evdump
+repos+=https\://github.com/glitchub/fbtools
+endif
 ifeq (${BEACON},on)
 repos+=https\://github.com/glitchub/beacon
 endif
 
 # apt packages to install
-packages=sox omxplayer python-pgmagick
+packages=sox
+ifneq (${SERVER_IP},)
+packages+=omxplayer python-pgmagick
+endif
 
 # files to be tweaked
 files=/etc/rc.local /boot/config.txt /etc/hosts
