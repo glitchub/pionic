@@ -9,8 +9,8 @@ ifeq (${USER},root)
 $(error Must not be run as root))
 endif
 
-# Load the configuration file.
-import pionic.conf
+# Load the configuration file
+import pionic.cfg
 
 LAN_IP:=$(strip ${LAN_IP})
 ifeq (${LAN_IP},)
