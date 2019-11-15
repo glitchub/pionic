@@ -114,7 +114,7 @@ endif
 /etc/hosts:
 	sudo sed -i '/pionic start/,/pionic end/d' $@ # first delete the old
 ifndef CLEAN
-	printf "\n\
+	printf "\
 # pionic start\n\
 ${LAN_IP}\\tpionic\n\
 # pionic end\n\
