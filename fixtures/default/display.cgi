@@ -1,5 +1,18 @@
 #!/bin/bash
-source ${0%/*}/cgi.inc
+# clear display or write image or text
+
+die() { echo $* >&2; exit 1; }
+set -o pipefail -E -u
+trap 'die "line $LINE: exit status $?"' ERR
+
+fbclear=$PIONIC/fbtools/fbclear
+[ -x $fbclear ] || die "Need executable $fbclear"
+
+fbimage=$PIONIC/fbtools/fbimage
+[ -x $fbimage ] || die "Need executable $fbimage"
+
+fbtext=$PIONIC/fbtools/fbtext
+[ -x $fbtext ] || die "Need executable $fbtext"
 
 command=clear
 fg=white
@@ -24,7 +37,7 @@ if (($#)); then
             mono*)              font=mono ;;
             prop*)              font=prop ;;
             badge)              point=80; align=c; font=prop ;;
-            wrap)               wrap=-w ;; 
+            wrap)               wrap=-w ;;
             *)                  die "Invalid option $o" ;;
         esac
     done
@@ -32,17 +45,17 @@ fi
 
 case $command in
     clear)
-        $base/fbtools/fbclear -c $bg
+        $fbclear -c $bg
         ;;
 
     image)
         image=-
-        ((${CONTENT_LENGTH:-0})) || image=$media/colorbars.jpg
-        $base/fbtools/fbimage -c $bg -s $image
+        ((${CONTENT_LENGTH:-0})) || image=${0%/*}/colorbars.jpg
+        $fbimage -c $bg -s $image
         ;;
 
     text)
-        $base/fbtools/fbtext -c $fg:$bg -s $point -g $align -f $font $wrap -b1 -
+        $fbtext -c $fg:$bg -s $point -g $align -f $font $wrap -b1 -
         ;;
 
     *) die "Invalid command $command";;

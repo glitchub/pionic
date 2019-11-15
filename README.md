@@ -6,7 +6,7 @@ Physical configuration:
     address via DHCP. The DHCP server is configured to assign a specific IP
     address for the PI's MAC, presumably correlates to the test station ID.
 
-    A USB ethernet dongle attaches to the DUT and gets a static IP (defined in the Makefile 
+    A USB ethernet dongle attaches to the DUT and gets a static IP (defined in the Makefile
     pionic.cfg).
 
     The 40-pin I/O connector attaches to test instrumentation, which is
@@ -35,17 +35,17 @@ Pionic provides:
 
         curl -f http://172.31.255.1/gpio?14=1
 
-    User interface via the touchscreen display. 
+    User interface via the touchscreen display.
 
     Customizable test fixture support.
-    
+
 To install:
 
     Download the SDcard image:
-    
+
         wget https://downloads.raspberrypi.org/raspbian_lite/images/raspbian_lite-2019-06-24/2019-06-20-raspbian-buster-lite.zip
 
-    Unzip and extract file 2019-06-20-raspbin-buster-lite.img (about 1.8GB). 
+    Unzip and extract file 2019-06-20-raspbin-buster-lite.img (about 1.8GB).
 
     Copy the img file to an 8GB SDcard using dd on linux or Win32DiskImager
     on Windows.
@@ -64,7 +64,9 @@ To install:
         sudo apt install git
         git clone https://github.com/glitchub/pionic
 
-    Review the "USER CONFIGURATION" section in the Makefile. Then:
+    Review pionic.conf and make desired changes.
+
+    Then:
 
         make -C pionic
 

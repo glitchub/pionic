@@ -1,37 +1,36 @@
 #!/bin/bash
-source ${0%/*}/cgi.inc
 
-((!UID)) || die "Must be root!"
+die() { echo $* >&2; exit 1; }
+set -o pipefail -E -u
+trap 'die "line $LINE: exit status $?"' ERR
 
-usage="Usage:
+runfor=$PIONIC/runfor/runfor
+[ -x $runfor ] || die "Need executable $runfor"
 
-    play [options]
-    -or-
-    curl http://172.31.255.1/play[?option[&option...]]
-
-Options are:
-
-    video=file  - file to play, default is coloarbars.mp4
-    time=X      - play time in seconds, 0-120, default is 30. 0 just kills the current play.
-    lcd         - if specified, output on lcd instead of hdmi
-"
+# Options are:
+#     video=file  - file to play, default is coloarbars.mp4
+#     time=X      - play time in seconds, 0-120, default is 30. 0 just kills the current play.
+#     lcd         - if specified, output on lcd instead of hdmi
 
 omxplayer=$(type -P omxplayer) || die "Need executable omxplayer"
 
-video=$media/colorbars.mp4
+# video files are in BASE directory (same directory as this script)
+video=$BASE/colorbars.mp4
 time=30
 output="--display 5 -o hdmi"
 display=hdmi
 
 (($#)) && for a in "$@"; do case $a in
-    video=*) video=$media/${a#*=}; [ -f $video ] || die "No such file '$video'";;
+    video=*) video=$BASE/${a#*=};;
     time=*) time=${a#*=}; echo $time | awk '{exit !(match($1,/^[0-9]+$/) && $1 >= 0 && $1 <= 120)}' || die "Invalid time '$time'";;
     lcd) output="--display 4 -o local"; display=lcd;;
-    *) exit 1 # die "$usage"
+    *) die "Invalid option '$a'";;
 esac; done
 
 pkill -f ${omxplayer##*/} || true
+
 if ((time)); then
+    [ -f $video ] || die "No such file '$video'"
     echo "Playing $video on $display for $time seconds"
     # close popen'd stdio or cgiserver will stall
     exec 0<&- 1>&- 2>&- 3>&- 4>&- 5>&- 6>&- 7>&- 8>&- 9>&-

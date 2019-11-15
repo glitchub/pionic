@@ -1,35 +1,11 @@
+Default fixture driver.
+
 CGIs in this directory are accessed via http on port 80 withn URL in the
-general form: 
+general form:
 
     http://ip.ad.re.ss/cginame[?options[&...options]]
 
-Where "cginame" is one of the executable files in this directory. The server
-returns HTTP error status if the CGI exits with non-zero status or writes to
-stderr.
-
-For bash CGI's, the file cgi.inc can be included in order to:
-        
-    Configure the shell to abort with error upon reference to uninitialized
-    variables or if any script pipeline has non-zero exit status
-
-    Redirect stderr to stdout, so incidentalm writes to stderr do not cause
-    failure (e.g. from dd). The original stderr is accessible via file handle
-    9.
-    
-    Instantiate a die() function which can be invoked to write to stderr and
-    abort the program. 
-
-    Parse QUERY_STRING into separate bash variables $1, $2, etc. and unescapes
-    all URL-encoded characters. 
-
-    Output the "Content-type: text/plain" header so that script output is
-    returned to the caller verbatim.  This can be avoided by unset-ting
-    GATEWAY_INTERFACE prior to including cgi.inc. 
-
-A script error will trigger a corresponding curl error if the -f flag is used. 
-
-Note that CGIs can also be run from the bash command line, with options
-provided as command line arguments.
+The cgi file name must end with .cgi.
 
 These CGIs are defined:
 
@@ -54,7 +30,7 @@ display
         image       - display image posted on stdin, or colorbars if none
         text        - clear display to bg color and write posted text with fg
                       color (posted on stdin)
-    
+
     Other options are:
 
         fg=color    - define foreground color text, default white.
@@ -69,7 +45,7 @@ display
         overlay     - ignore bg color, use the existing framebuffer contents as
                       the background. I.E. superimpose new text.
         status      - short for "overlay,align=sw"
-        
+
     Example:
 
         # Show arbitrary text
@@ -85,7 +61,7 @@ display
         $ curl -qf 'https://192./168.111.1/display?image'
 
 factory
-    
+
     Return the factory server address and CGI port. This is the mechanism used
     by DUT to determine that it is, in fact, in the factory environment.
 
@@ -105,7 +81,7 @@ gpio
         G=in        - enable gpio G and set it as an input
         G=reset     - disable gpio G (so no longer owned by sysfs)
         reset       - disable all gpios
-    
+
     Where G is the gpio number 4 to 27. After all options are processed (if
     any), list the current state of all enabled gpios.
 
@@ -113,17 +89,17 @@ gpio
 
         $ curl -qf 'http://192.168.111.1/gpio?6=1'
         6: out 1
-        
+
         $ curl -qf 'http://192.168.111.1/gpio?7=in'
         6: out 1
         7: in 1
-        
+
         $ curl -qf 'http://192.168.111.1/gpio'
         6: out 1
         7: in 1
 
 mkfm
-    
+
     Trigger FM signal generation on GPIO 4. Returns transmit status message.
 
     Options are:
@@ -131,7 +107,7 @@ mkfm
         freq=XXX.X  - transmit frequency in MHz, 88.1 to 107.9, default is 99.9
         tone=X      - modulation frequency in Hz, 10-8000, default is 1000
         time=X      - transmit time in seconds, 0-120, default is 30. 0 just
-                      kills the current transmission. 
+                      kills the current transmission.
 
     Example:
 
@@ -139,7 +115,7 @@ mkfm
         Transmitting 1000 Hz on 100 MHz FM for 5 seconds
 
 play
-    
+
     Start video playback on HDMI, returns playback status message.
 
     Options are:
@@ -150,22 +126,22 @@ play
                       the current playback.
         lcd         - if provided, playback is via LCD instead of HDMI
 
-    Example:        
-        
+    Example:
+
         $ curl -qf 'http://192.168.111.1/play&time=10'
         Playing /home/pi/pionic/cgi/media/colorbars.mp4 on hdmi for 10 seconds
 
 time
-    
+
     Return the controller's current time in epoch seconds and format MMDDhhmmYYYY.SS (in UCT).
 
     Example:
-        
+
          $ curl -qf http://192.168.111.1/time
          1554235513 200504022019.13
 
-i2c 
-	
+i2c
+
     A simple wrapper for i2cio, passes the posted command tesxt to i2cio stdin and returns hex data output, if any.
 
     Example:
@@ -173,6 +149,6 @@ i2c
 	$ curl --data-binary @- http://192.168.111.1/i2c <<< 'd 0x21 1 w 0x44 r 2'
         0x01 0x34
 
-    (in this case, read two bytes from hypothetical register 0x44 of hypothetical device 0x21 on bus 1)		
+    (in this case, read two bytes from hypothetical register 0x44 of hypothetical device 0x21 on bus 1)
 
     See http://github.com/glitchub/i2cio for details.
