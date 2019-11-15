@@ -121,6 +121,7 @@ ifeq (${SERVER_IP},)
 else
 	sudo sed -i '/^exit/i/home/pi/pionic/pionic.sh start' $@
 endif
+endif
 
 # configure kernel
 /boot/config.txt:
