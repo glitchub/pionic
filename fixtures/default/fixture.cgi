@@ -1,7 +1,5 @@
 #!/usr/bin/python
 
-#!/usr/bin/python
-
 # Test fixture control cgi. Given argument XXX and list of options, execute
 # "do_XXX(options)". If the return value is not None, print it to stdout.
 
@@ -26,7 +24,7 @@ def do_gpios(state):
     return gpio(7).state
 
 def do_get_temp():
-   print tmp101(1,0x49).get_temperature()
+    print tmp101(1,0x49).get_temperature()
 
 # invoke the requested function
 exec "ret=do_"+sys.argv[1]+"("+",".join(sys.argv[2:])+")"
