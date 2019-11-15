@@ -45,6 +45,7 @@ case "${1:-}" in
         # store the subshell pid
         mkdir -p $tmp
         echo $BASHPID > $tmp/.pid
+        [[ ${2:-} == local ]] && localmode=1 || localmode=0
 
         # after this point, kill shell children on exit and reinstate console
         trap 'exs=$?;
@@ -55,7 +56,7 @@ case "${1:-}" in
         # wait for network to be up and start daemons
         while true; do
             wait=0
-            if ! [[ $LOCALMODE ]]; then
+            if ((!localmode)); then
                 # require eth0 if normal operation
                 if ! (($(cat /sys/class/net/eth0/carrier))); then
                     echo "Ethernet is not attached"
@@ -89,7 +90,7 @@ case "${1:-}" in
         # Try to fetch the fixture driver name, note local port 61080 redirects to server port 80
         # If we don't get a response then use the default
 
-        if ! [[ $LOCALMODE ]]; then
+        if ((!localmode)); then
             echo "Requesting fixture"
             fixture=$($curl "http://localhost:61080/cgi-bin/factory?service=fixture") || die "No response from server"
             fixture=${fixture,,}
@@ -118,8 +119,6 @@ case "${1:-}" in
         ) &
         ;;
 
-    local) LOCALMODE=1 exec $0 start ;;
-
     stop)
         if [ -e $tmp/.pid ]; then
             kill $(cat $tmp/.pid) &>/dev/null || true
@@ -127,12 +126,7 @@ case "${1:-}" in
         fi
         ;;
 
-    res*)
-        $0 stop
-        exec $0 start
-        ;;
-
-    *)  die "Usage: $0 stop | start | restart"
+    *)  die "Usage: $0 stop | start [ local ]"
         ;;
 esac
 true

@@ -126,7 +126,7 @@ endif
 	sudo sed -i '/pionic/d' $@ # first delete the old
 ifndef CLEAN
 ifeq (${SERVER_IP},)
-	sudo sed -i '/^exit/i/home/pi/pionic/pionic.sh local' $@
+	sudo sed -i '/^exit/i/home/pi/pionic/pionic.sh start local' $@
 else
 	sudo sed -i '/^exit/i/home/pi/pionic/pionic.sh start' $@
 endif
