@@ -1,46 +1,43 @@
 # Pi-based Networked Instrument Controller
 
-#### USER CONFIGURATION
-
-# Factory server IP address
-SERVER_IP = 172.16.240.254
-
-# LAN IP address, i.e. what address the DUT expects to talk to
-LAN_IP = 192.168.111.1
-
-# Space-separated list of TCP ports to be forwarded to specific hosts (in either direction).
-# Ports 61080 and 61433 must be defined and forward to the server. Others are optional.
-FORWARD = 61080=${SERVER_IP}:80 61443=${SERVER_IP}:443
-FORWARD += 2222=192.168.111.10:22
-
-# Space-separated list of WAN ports to unblock, at least allow ssh port 22
-UNBLOCK = 22
-
-# IP range to be assigned by dhcp, in the form "firstIP, lastIP". Comment out to disable.
-# DHCP_RANGE = 192.168.111.250, 192.168.111.254
-
-# Uncomment to install beacon daemon. Comment out if DUTs have static IP.
-# BEACON = 1
-
-# Set to on to enable SPI interface, off to disable, comment out to leave as is
-SPI = on
-
-# Set to on to enable I2C interface, off to disable, comment out to leave as is
-I2C = on
-
-#### END USER CONFIGURATION
-
-# invoke raspi-config in non-interactive mode, "on" enables, any other disables
-raspi-config=sudo raspi-config nonint $1 $(if $(filter on,$2),0,1)
-
-# Make sure we're running the right code and are not root
-ifeq ($(shell grep "Raspberry Pi reference 2019-06-20" /etc/rpi-issue),)
-$(error "Requires Raspberry Pi running 2019-06-20-raspbin-buster-lite.img")
+# Make sure we're running on a Pi
+ifeq ($(wildcard /etc/rpi-issue),)
+$(error Must be run on Raspberry Pi)
 endif
 
 ifeq (${USER},root)
 $(error Must not be run as root))
 endif
+
+# Load the configuration file.
+import pionic.conf
+
+LAN_IP:=$(strip ${LAN_IP})
+ifeq (${LAN_IP},)
+$(error Must define LAN_IP)
+endif
+
+SERVER_IP:=$(strip ${SERVER_IP})
+ifeq (${SERVER_IP},)
+$(warning SERVER_IP not defined, installing pionic in local mode)
+else
+# Forward 61080 and 61443 to the factory server
+FORWARD += 61080=${SERVER_IP}:80 61443=${SERVER_IP}:443 # forward from DUT to server
+endif
+
+# Always unblock SSH
+UNBLOCK += 22
+
+LAN_IP:=$(strip ${LAN_IP})
+FORWARD:=$(strip ${FORWARD})
+UNBLOCK:=$(strip ${UNBLOCK})
+DHCP_RANGE:=$(strip ${DHCP_RANGE})
+BEACON:=$(strip ${BEACON})
+SPI:=$(strip ${SPI})
+I2C:=$(strip ${I2C})
+
+# invoke raspi-config in non-interactive mode, "on" enables, any other disables
+raspi-config=sudo raspi-config nonint $1 $(if $(filter on,$2),0,1)
 
 # git repos to fetch and build, note the ":" must be escaped
 repos=https\://github.com/glitchub/rasping
@@ -49,7 +46,7 @@ repos+=https\://github.com/glitchub/runfor
 repos+=https\://github.com/glitchub/fbtools
 repos+=https\://github.com/glitchub/pifm
 repos+=https\://github.com/glitchub/plio
-ifdef BEACON
+ifeq (${BEACON},on)
 repos+=https\://github.com/glitchub/beacon
 endif
 
@@ -87,7 +84,7 @@ endif
 ${repos}: packages
 ifndef CLEAN
 	if [ -d $(notdir $@) ]; then git -C $(notdir $@) pull; else git clone $@; fi
-	! [ -f $(notdir $@)/Makefile ] || make -C $(notdir $@) $(if $(findstring rasping,$@),UNBLOCK="$(strip ${UNBLOCK})" LAN_IP="$(strip ${LAN_IP})" FORWARD="$(strip ${FORWARD})" DHCP_RANGE="$(strip ${DHCP_RANGE})")
+	! [ -f $(notdir $@)/Makefile ] || make -C $(notdir $@) $(if $(findstring rasping,$@),UNBLOCK="${UNBLOCK}" LAN_IP="${LAN_IP}" FORWARD="${FORWARD}" DHCP_RANGE="${DHCP_RANGE}")
 else
 	! [ -f $(notdir $@)/Makefile ] || make -C $(notdir $@) clean || true
 ifeq (${CLEAN},2)
@@ -104,14 +101,13 @@ else ifeq (${CLEAN},2)
 	${APT} remove --autoremove --purge -y ${packages}
 endif
 
-# add hosts entries for DUT
+# add "pionic" host entry for DUT
 /etc/hosts:
 	sudo sed -i '/pionic start/,/pionic end/d' $@ # first delete the old
 ifndef CLEAN
 	printf "\n\
 # pionic start\n\
-${SERVER_IP}\\tfactory.server\n\
-${LAN_IP}\\tpionic.server\n\
+${LAN_IP}\\tpionic\n\
 # pionic end\n\
 " | sudo sh -c 'cat >> $@'
 endif
@@ -120,6 +116,9 @@ endif
 /etc/rc.local:
 	sudo sed -i '/pionic/d' $@ # first delete the old
 ifndef CLEAN
+ifeq (${SERVER_IP},)
+	sudo sed -i '/^exit/i/home/pi/pionic/pionic.sh local' $@
+else
 	sudo sed -i '/^exit/i/home/pi/pionic/pionic.sh start' $@
 endif
 

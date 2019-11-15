@@ -55,15 +55,18 @@ case "${1:-}" in
         # wait for network to be up and start daemons
         while true; do
             wait=0
-            if ! (($(cat /sys/class/net/eth0/carrier))); then
-                echo "Ethernet is not attached"
-                wait=1
-            elif ! station_ip=$(ipaddr eth0); then
-                echo "Waiting for station ID, MAC=$(cat /sys/class/net/eth0/address)"
-                wait=1
-            else
-                station=${station_ip##*.}
-                station=${station%/*}
+            if ! [[ $LOCALMODE ]]; then
+                # require eth0 if normal operation
+                if ! (($(cat /sys/class/net/eth0/carrier))); then
+                    echo "Ethernet is not attached"
+                    wait=1
+                elif ! station_ip=$(ipaddr eth0); then
+                    echo "Waiting for station ID, MAC=$(cat /sys/class/net/eth0/address)"
+                    wait=1
+                else
+                    station=${station_ip##*.}
+                    station=${station%/*}
+                fi
             fi
 
             if ! [ -d /sys/class/net/eth1 ]; then
@@ -85,32 +88,37 @@ case "${1:-}" in
         ! [ -d $here/beacon ] || pgrep -f beacon &>/dev/null || $here/beacon/beacon send br0 &
         # Try to fetch the fixture driver name, note local port 61080 redirects to server port 80
         # If we don't get a response then use the default
-        echo "Requesting fixture from server"
-        fixture=$($curl "http://localhost:61080/cgi-bin/factory?service=fixture") || die "No response from server"
-        fixture=${fixture,,}
-        [[ $fixture && $fixture != none ]] || fixture=default
 
-        echo "Using fixture '$fixture'"
-
-        if [ -x $here/fixtures/$fixture/fixture.sh ]; then
-            # use built-in fixture
-            console off
-            $here/fixtures/$fixture/fixture.sh $here $station
+        if ! [[ $LOCALMODE ]]; then
+            echo "Requesting fixture"
+            fixture=$($curl "http://localhost:61080/cgi-bin/factory?service=fixture") || die "No response from server"
+            fixture=${fixture,,}
+            [[ $fixture && $fixture != none ]] || fixture=default
+            echo "Using fixture '$fixture'"
+            if [ -x $here/fixtures/$fixture/fixture.sh ]; then
+                # use built-in fixture
+                console off
+                $here/fixtures/$fixture/fixture.sh $here $station
+            else
+                # otherwise try to download it
+                rm -rf $tmp/fixtures
+                mkdir $tmp/fixtures
+                fixtures="http://localhost:61080/fixtures.tar.gz"
+                echo "Fetching $fixtures..."
+                $curl $fixtures | tar -C $tmp/fixtures -xz || die "Fetch failed"
+                [ -x $tmp/fixtures/$fixture/fixture.sh ] || die "Fixture driver '$fixture' not found"
+                console off
+                $tmp/fixtures/$fixture/fixture.sh $here $station
+            fi
         else
-            # otherwise try to download it
-            rm -rf $tmp/fixtures
-            mkdir $tmp/fixtures
-            fixtures="http://localhost:61080/fixtures.tar.gz"
-            echo "Fetching $fixtures..."
-            $curl $fixtures | tar -C $tmp/fixtures -xz || die "Fetch failed"
-            [ -x $tmp/fixtures/$fixture/fixture.sh ] || die "Fixture driver '$fixture' not found"
-            console off
-            $tmp/fixtures/$fixture/fixture.sh $here $station
+            $here/fixtures/local/fixture.sh $here
         fi
 
         die "Fixture '$fixture' exit status $?"
         ) &
         ;;
+
+    local) LOCALMODE=1 exec $0 start ;;
 
     stop)
         if [ -e $tmp/.pid ]; then
