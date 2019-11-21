@@ -18,9 +18,11 @@ Physical configuration:
 
 Pionic provides:
 
-    NAT translation from the DUT to the server. Port 61080 is forwarded to
-    factory server port 80, and 61443 is forwarded to factory server port 443,
-    the DUT only has to know the IP address of the pionic device.
+    DNS proxy, and resolves 'pioinc.server', returning its own LAN address.
+
+    NAT translation from the DUT to the factory server. Port 61080 is forwarded
+    to factory server port 80, and 61443 is forwarded to factory server port
+    443.
 
     If enabled, the beacon server is started on the DUT interface, this
     transmits "beacon ethernet packets. The DUT listens for beacons during
@@ -28,12 +30,12 @@ Pionic provides:
     pre-defined static IP in the same subnet.
 
     Alternatively if the DUT will automatically bring up static IP during boot,
-    it can simply attempt to access the factory server at port 61080, if the
+    it can simply attempt to access the factory server via port 61080, if the
     expected response is received then it enters diagnostic mode.
 
     Access to test-specific CGI's on port 80, the DUT uses curl e.g.:
 
-        curl -f http://172.31.255.1/gpio?14=1
+        curl -f http://pionic.server/test
 
     User interface via the touchscreen display.
 
@@ -64,7 +66,7 @@ To install:
         sudo apt install git
         git clone https://github.com/glitchub/pionic
 
-    Review pionic.conf and make desired changes.
+    Review pionic/pionic.cfg and make desired changes.
 
     Then:
 
@@ -74,7 +76,7 @@ To install:
     which takes over the display and shows status. If all is well pionic.sh
     will start the fixture driver.
 
-    When pionic is running it takes over the display, login is normally only
+    When pionic is running it may take over the display and login will only
     possible via ssh. It's possible to induce pionic failure by booting with
     the ethernet unplugged and therefore access the console while it's trying
     to start.

@@ -110,13 +110,13 @@ else ifeq (${CLEAN},2)
 	${APT} remove --autoremove --purge -y ${packages}
 endif
 
-# add "pionic" host entry for DUT
+# add "pionic.server" host entry for DUT
 /etc/hosts:
 	sudo sed -i '/pionic start/,/pionic end/d' $@ # first delete the old
 ifndef CLEAN
 	printf "\
 # pionic start\n\
-${LAN_IP}\\tpionic\n\
+${LAN_IP}\\tpionic.server\n\
 # pionic end\n\
 " | sudo sh -c 'cat >> $@'
 endif
