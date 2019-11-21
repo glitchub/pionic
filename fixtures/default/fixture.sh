@@ -19,6 +19,7 @@ BASE=$(realpath ${0%/*})
 trap 'x=$?;
       set +eu;
       echo 1 > /sys/class/vtconsole/vtcon1/bind;
+      chvt 1 < /dev/console;
       kill $(jobs -p) &>/dev/null && wait $(jobs -p);
       $PIONIC/fbtools/fbclear
       (($x)) && echo EXIT $x;
@@ -41,6 +42,7 @@ pgrep -f cgiserver &>/dev/null || die "cgiserver did not start"
 
 # detach console from framebuffer
 echo 0 > /sys/class/vtconsole/vtcon1/bind
+chvt 63 < /dev/console
 
 logo() { printf "TEST STATION $STATION READY" | $fbtext -cwhite:blue -gc -s40 -b1 -; }
 

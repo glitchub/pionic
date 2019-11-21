@@ -38,12 +38,13 @@ case "${1:-}" in
             # after this point, kill shell children on exit
             trap 'exs=$?;
                 echo 1 > /sys/class/vtconsole/vtcon1/bind;
+                chvt 1 < /dev/console;
                 kill $(jobs -p) &>/dev/null && wait $(jobs -p) || true;
                 exit $exs' EXIT
 
             if [[ $station != local ]]; then
                 # require eth0 for normal operation
-                while (($(cat /sys/class/net/eth0/carrier))); do
+                while ((! $(cat /sys/class/net/eth0/carrier))); do
                     echo "Ethernet is not attached"
                     sleep 1
                 done
@@ -59,12 +60,12 @@ case "${1:-}" in
 
             while ! ipaddr br0 &>/dev/null; do
                 echo "Waiting for br0 to come up"
-                wait=1
+                sleep 1
             done
 
-            while ! [[ $(bridge link show dev noot 2>/dev/null) ]]; do
+            while ! [[ $(bridge link show 2>/dev/null) ]]; do
                 echo "Waiting for bridged device (is USB ethernet attached?)"
-                wait=1
+                sleep 1
             done
 
             # start beacon if enabled
@@ -110,4 +111,3 @@ case "${1:-}" in
         ;;
 esac
 true
-
