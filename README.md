@@ -65,18 +65,32 @@ To install:
 
         sudo apt install git
         git clone https://github.com/glitchub/pionic
+        cd pionic
 
-    Review pionic/pionic.cfg and make desired changes.
+    Review pionic.cfg and make desired changes, then:
 
-    Then:
+        make
 
-        make -C pionic
+    Assuming install is completed normally, just esure that a USB dongle is
+    attached and reboot. The Pi will boot and run the script pionic.sh.
 
-    Ensure that USB dongle is attached and reboot. Pi will boot to pionic.sh
-    which takes over the display and shows status. If all is well pionic.sh
-    will start the fixture driver.
+    pionic.sh waits for networking to be up, then reqests a fixture driver name
+    from the server. If no name is provided then it uses 'default'.
 
-    When pionic is running it may take over the display and login will only
-    possible via ssh. It's possible to induce pionic failure by booting with
-    the ethernet unplugged and therefore access the console while it's trying
-    to start.
+    If the named driver directory does exist in the './fixtures', then
+    pionic.sh will download fixtgures.tar.gz from the server, unpack it to a
+    temp directory, and look for the fixture directory there.
+
+    The fixture directory will contain script fixture.sh, pionic calls that
+    script and does not exit it to return.
+
+    Note it is also possible to install pionic as a stand-alone controller
+    without a factory server behind it, using:
+
+        make local
+
+    In this case pionic will use the 'local' fixture driver, passing control to
+    ./fixtures/local/fixture.sh. Currently this just starts a cgi server that
+    supports mkfm cgi.
+
+

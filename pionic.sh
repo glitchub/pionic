@@ -22,107 +22,87 @@ tmp=/tmp/pionic
 # curl timeout after 4 seconds, -q=disable curl.config, -s=silent (no status), -S=show error, -f=fail with exit status 22
 curl="curl --connect-timeout 2 -qsSf"
 
-# turn console on and off
-console()
-{
-    case "$1" in
-        off)
-            setterm --cursor off > /dev/tty1
-            echo 0 > /sys/class/vtconsole/vtcon1/bind
-            dmesg -n 1
-            ;;
-        *)
-            echo 1 > /sys/class/vtconsole/vtcon1/bind
-            setterm --cursor on > /dev/tty1
-            ;;
-    esac
-    true
-}
-
 case "${1:-}" in
     start)
         (
-        # store the subshell pid
-        mkdir -p $tmp
-        echo $BASHPID > $tmp/.pid
-        [[ ${2:-} == local ]] && localmode=1 || localmode=0
+            # create a tmp directory
+            rm -rf $tmp
+            mkdir -p $tmp
 
-        # after this point, kill shell children on exit and reinstate console
-        trap 'exs=$?;
-            kill $(jobs -p) &>/dev/null && wait $(jobs -p) || true;
-            console on || true;
-            exit $exs' EXIT
+            # store subshell pid for 'stop'
+            echo $BASHPID > $tmp/pid
 
-        # wait for network to be up and start daemons
-        while true; do
-            wait=0
-            if ((!localmode)); then
-                # require eth0 if normal operation
-                if ! (($(cat /sys/class/net/eth0/carrier))); then
+            station=""
+            [[ ${2:-} == local ]] && station=local
+
+            # after this point, kill shell children on exit
+            trap 'exs=$?;
+                echo 1 > /sys/class/vtconsole/vtcon1/bind;
+                kill $(jobs -p) &>/dev/null && wait $(jobs -p) || true;
+                exit $exs' EXIT
+
+            if [[ $station != local ]]; then
+                # require eth0 for normal operation
+                while (($(cat /sys/class/net/eth0/carrier))); do
                     echo "Ethernet is not attached"
-                    wait=1
-                elif ! station_ip=$(ipaddr eth0); then
-                    echo "Waiting for station ID, MAC=$(cat /sys/class/net/eth0/address)"
-                    wait=1
-                else
-                    station=${station_ip##*.}
-                    station=${station%/*}
+                    sleep 1
+                done
+
+                while ! station_ip=$(ipaddr eth0); do
+                    echo "Waiting for station ID (MAC=$(cat /sys/class/net/eth0/address))"
+                    sleep 1
+                done
+
+                station=${station_ip##*.}
+                station=${station%/*}
+            fi
+
+            while ! ipaddr br0 &>/dev/null; do
+                echo "Waiting for br0 to come up"
+                wait=1
+            done
+
+            while ! [[ $(bridge link show dev noot 2>/dev/null) ]]; do
+                echo "Waiting for bridged device (is USB ethernet attached?)"
+                wait=1
+            done
+
+            # start beacon if enabled
+            ! [ -d $here/beacon ] || pgrep -f beacon &>/dev/null || $here/beacon/beacon send br0 &
+
+
+            if [[ $station == local ]]; then
+                # use local fixture driver
+                fixture=$here/fixtures/local/fixture.sh
+            else
+                # get fixture name from server
+                echo "Requesting fixture name"
+                name=$($curl "http://localhost:61080/cgi-bin/factory?service=fixture") || die "No response from server"
+                name=${name,,} # lowercase
+                [[ $name && $name != none ]] || name=default
+                fixture=$here/fixtures/$name/fixture.sh
+                if ! [ -x $fixture ]; then
+                    # try to download it
+                    fixtures="http://localhost:61080/fixtures.tar.gz"
+                    echo "Fetching $fixtures..."
+                    mkdir $tmp/fixtures
+                    $curl $fixtures | tar -C $tmp/fixtures -xz || die "Fetch failed"
+                    fixture="tmp/fixtures/$name/fixture.sh"
                 fi
             fi
 
-            if ! [ -d /sys/class/net/eth1 ]; then
-                echo "USB ethernet is not attached"
-                wait=1
-            fi
-
-            if ! ipaddr br0 &>/dev/null; then
-                echo "Waiting for br0"
-                wait=1
-            fi
-
-            ((wait)) || break
-
-            sleep 1
-        done
-
-        # start beacon if enabled
-        ! [ -d $here/beacon ] || pgrep -f beacon &>/dev/null || $here/beacon/beacon send br0 &
-        # Try to fetch the fixture driver name, note local port 61080 redirects to server port 80
-        # If we don't get a response then use the default
-
-        if ((!localmode)); then
-            echo "Requesting fixture"
-            fixture=$($curl "http://localhost:61080/cgi-bin/factory?service=fixture") || die "No response from server"
-            fixture=${fixture,,}
-            [[ $fixture && $fixture != none ]] || fixture=default
-            echo "Using fixture '$fixture'"
-            if [ -x $here/fixtures/$fixture/fixture.sh ]; then
-                # use built-in fixture
-                console off
-                $here/fixtures/$fixture/fixture.sh $here $station
-            else
-                # otherwise try to download it
-                rm -rf $tmp/fixtures
-                mkdir $tmp/fixtures
-                fixtures="http://localhost:61080/fixtures.tar.gz"
-                echo "Fetching $fixtures..."
-                $curl $fixtures | tar -C $tmp/fixtures -xz || die "Fetch failed"
-                [ -x $tmp/fixtures/$fixture/fixture.sh ] || die "Fixture driver '$fixture' not found"
-                console off
-                $tmp/fixtures/$fixture/fixture.sh $here $station
-            fi
-        else
-            $here/fixtures/local/fixture.sh $here
-        fi
-
-        die "Fixture '$fixture' exit status $?"
+            [[ -x $fixture ]] || die "Fixture driver '$fixture' not found"
+            echo "Starting '$fixture'"
+            $fixture $here $station
+            # in theory, it doesn't return
+            die "'$fixture' exit status $?"
         ) &
         ;;
 
     stop)
-        if [ -e $tmp/.pid ]; then
-            kill $(cat $tmp/.pid) &>/dev/null || true
-            rm -f $tmp/.pid
+        if [ -e $tmp/pid ]; then
+            kill $(cat $tmp/pid) &>/dev/null || true
+            rm -f $tmp
         fi
         ;;
 
