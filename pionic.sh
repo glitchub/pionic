@@ -38,7 +38,6 @@ case "${1:-}" in
             # after this point, kill shell children on exit
             trap 'exs=$?;
                 echo 1 > /sys/class/vtconsole/vtcon1/bind;
-                chvt 1 < /dev/console;
                 kill $(jobs -p) &>/dev/null && wait $(jobs -p) || true;
                 exit $exs' EXIT
 
@@ -103,7 +102,6 @@ case "${1:-}" in
     stop)
         if [ -e $tmp/pid ]; then
             kill $(cat $tmp/pid) &>/dev/null || true
-            rm -f $tmp
         fi
         ;;
 
