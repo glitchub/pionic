@@ -2,13 +2,11 @@
 
 # Local test fixture, just start the cgi-server and spin.
 
-echo "Local fixture driver"
-
 die() { echo $@ >&2; exit 1; }
 
 ((!UID)) || die "Must be root!"
 
-(($#==1)) || die "Usage: $0 pionic_dir"
+(($#)) || die "Usage: $0 pionic_dir"
 
 PIONIC=$1
 BASE=$(realpath ${0%/*})

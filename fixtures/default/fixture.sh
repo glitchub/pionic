@@ -18,6 +18,7 @@ BASE=$(realpath ${0%/*})
 # nuke children on exit
 trap 'x=$?;
       set +eu;
+      echo 1 > /sys/class/vtconsole/vtcon1/bind;
       kill $(jobs -p) &>/dev/null && wait $(jobs -p);
       $PIONIC/fbtools/fbclear
       (($x)) && echo EXIT $x;
@@ -37,6 +38,9 @@ pkill -f cgiserver &>/dev/null || true
 env -i BASE=$BASE PATH=$PATH STATION=$STATION PIONIC=$PIONIC $cgiserver $BASE 80 2>&1 | logger &
 sleep 1
 pgrep -f cgiserver &>/dev/null || die "cgiserver did not start"
+
+# detach console from framebuffer
+echo 0 > /sys/class/vtconsole/vtcon1/bind
 
 logo() { printf "TEST STATION $STATION READY" | $fbtext -cwhite:blue -gc -s40 -b1 -; }
 
