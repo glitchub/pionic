@@ -43,4 +43,4 @@ for i in sys.argv[1:]:
 
     raise Exception("Invalid gpio operation '"+i+"'")
 
-if states: print " ".join(map(str,result))
+if states: print " ".join(map(str,states))
