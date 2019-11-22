@@ -1,13 +1,6 @@
 #!/bin/bash
 # Dump the CGI environment
 
-die() { echo $* >&2; exit 1; }
-set -o pipefail -E -u
-trap 'die "line $LINE: exit status $?"' ERR
-
-echo This is to STDOUT
-echo This is to STDERR >&2
-
 echo -------------------------------
 
 ls -al $BASE
@@ -28,8 +21,5 @@ if (($#)); then
     echo $# arguments:
     printf "  %s\n" "$@"
 fi
-
-# if first param is 'choke' then return error
-[[ ${1:-} != choke ]] || die "Death by bunga!"
 
 true

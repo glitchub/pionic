@@ -84,13 +84,10 @@ To install:
     The fixture directory will contain script fixture.sh, pionic calls that
     script and does not exit it to return.
 
-    Note it is also possible to install pionic as a stand-alone controller
-    without a factory server behind it, using:
-
-        make local
-
-    In this case pionic will use the 'local' fixture driver, passing control to
-    ./fixtures/local/fixture.sh. Currently this just starts a cgi server that
-    supports mkfm cgi.
+    Note it is possible to install pionic in 'local' mode by setting
+    "SERVER_IP=" without a value. It will not attempt to talk to the server and
+    will start the 'local' fixture driver, i.e. ./fixtures/local/fixture.sh.
+    Currently the local driver just starts a cgi server that supports the mkfm
+    command option.
 
 
