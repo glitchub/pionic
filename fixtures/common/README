@@ -1,0 +1,3 @@
+Common files for fixture drivers, may be symlinked per fixture.
+
+This directory should never contain "fixture.sh".
