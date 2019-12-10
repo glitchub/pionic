@@ -48,10 +48,8 @@ repos=https\://github.com/glitchub/rasping
 repos+=https\://github.com/glitchub/runfor
 repos+=https\://github.com/glitchub/pifm
 repos+=https\://github.com/glitchub/plio
-ifneq (${SERVER_IP},)
 repos+=https\://github.com/glitchub/evdump
 repos+=https\://github.com/glitchub/fbtools
-endif
 ifeq (${BEACON},on)
 repos+=https\://github.com/glitchub/beacon
 endif
