@@ -83,11 +83,11 @@ case "${1:-}" in
                 fixture=$here/fixtures/$name/fixture.sh
                 if ! [ -x $fixture ]; then
                     # try to download it
-                    fixtures="http://localhost:61080/fixtures.tar.gz"
-                    echo "Fetching $fixtures..."
-                    mkdir $tmp/fixtures
-                    $curl $fixtures | tar -C $tmp/fixtures -xz || die "Fetch failed"
-                    fixture="tmp/fixtures/$name/fixture.sh"
+                    tarball="http://localhost:61080/downloads/fixtures/$name.tar.gz"
+                    echo "Fetching $tarball..."
+                    mkdir $tmp/fixture
+                    $curl $tarball | tar -C $tmp/fixture -xz || die "Fetch failed"
+                    fixture="$tmp/fixture/fixture.sh"
                 fi
             fi
 
