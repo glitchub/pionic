@@ -40,6 +40,9 @@ BEACON:=$(strip ${BEACON})
 SPI:=$(strip ${SPI})
 I2C:=$(strip ${I2C})
 
+# Configuration arguments passed to rasping Makefile
+RASPING = 'UNBLOCK="${UNBLOCK}" LAN_IP="${LAN_IP}" FORWARD="${FORWARD}" DHCP_RANGE="${DHCP_RANGE}" PINGABLE="yes"'
+
 # invoke raspi-config in non-interactive mode, "on" enables, any other disables
 raspi-config=sudo raspi-config nonint $1 $(if $(filter on,$2),0,1)
 
@@ -91,7 +94,7 @@ endif
 ${repos}: packages
 ifndef CLEAN
 	if [ -d $(notdir $@) ]; then git -C $(notdir $@) pull; else git clone $@; fi
-	! [ -f $(notdir $@)/Makefile ] || make -C $(notdir $@) $(if $(findstring rasping,$@),UNBLOCK="${UNBLOCK}" LAN_IP="${LAN_IP}" FORWARD="${FORWARD}" DHCP_RANGE="${DHCP_RANGE}")
+	! [ -f $(notdir $@)/Makefile ] || make -C $(notdir $@) $(if $(findstring rasping,$@),${RASPING})
 else
 	! [ -f $(notdir $@)/Makefile ] || make -C $(notdir $@) clean || true
 ifeq (${CLEAN},2)
