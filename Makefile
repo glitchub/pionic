@@ -40,8 +40,8 @@ BEACON:=$(strip ${BEACON})
 SPI:=$(strip ${SPI})
 I2C:=$(strip ${I2C})
 
-# Configuration arguments passed to rasping Makefile
-RASPING = 'UNBLOCK="${UNBLOCK}" LAN_IP="${LAN_IP}" FORWARD="${FORWARD}" DHCP_RANGE="${DHCP_RANGE}" PINGABLE="yes"'
+# Configuration arguments that are passed to rasping Makefile
+RASPING = UNBLOCK="${UNBLOCK}" LAN_IP="${LAN_IP}" FORWARD="${FORWARD}" DHCP_RANGE="${DHCP_RANGE}" PINGABLE="yes"
 
 # invoke raspi-config in non-interactive mode, "on" enables, any other disables
 raspi-config=sudo raspi-config nonint $1 $(if $(filter on,$2),0,1)
