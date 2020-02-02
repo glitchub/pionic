@@ -39,6 +39,7 @@ DHCP_RANGE:=$(strip ${DHCP_RANGE})
 BEACON:=$(strip ${BEACON})
 SPI:=$(strip ${SPI})
 I2C:=$(strip ${I2C})
+PRODUCTION:=$(strip ${PRODUCTION})
 
 # Configuration arguments that are passed to rasping Makefile
 RASPING = UNBLOCK="${UNBLOCK}" LAN_IP="${LAN_IP}" FORWARD="${FORWARD}" DHCP_RANGE="${DHCP_RANGE}" PINGABLE="yes"
@@ -153,6 +154,29 @@ overscan_right=-32\n\
 overscan_top=-32\n\
 overscan_bottom=-32\n\
 # pionic end\n\
+" | sudo sh -c 'cat >> $@'
+endif
+endif
+
+/etc/fstab:
+	sudo sed -i '/pionic start/,/pionic end/d' $@ # first delete the old
+ifndef CLEAN
+ifeq (${PRODUCTION},on)
+	printf "\
+# pionic start\n\
+tmpfs /tmp tmpfs defaults\n\
+# pionic end\n\
+" | sudo -c 'cat >> $@'
+endif
+endif
+
+/etc/rsyslog.d/pionic.conf:
+	rm -f $@
+ifndef CLEAN
+ifeq (${production},on)
+	printf "\
+# discard all logs\n\
+*.* stop\n\
 " | sudo sh -c 'cat >> $@'
 endif
 endif
