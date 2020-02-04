@@ -79,7 +79,7 @@ endif
 ifdef I2C
 	$(call raspi-config,do_i2c,off)
 endif
-        systemctl enable --now rsyslog
+	sudo systemctl enable --now rsyslog
 else
 # maybe enable SPI and I2C via raspi-config
 ifdef SPI
@@ -88,9 +88,9 @@ endif
 ifdef I2C
 	$(call raspi-config,do_i2c,${I2C})
 endif
-ifeq (${production},on)
-        @echo "Syslog disabled in production mode"
-        systemctl disable --now rsyslog
+ifeq (${PRODUCTION},on)
+	@echo "Syslog disabled in production mode"
+	sudo systemctl disable --now rsyslog
 endif
 	sync
 	@echo "Reboot to start pionic"
