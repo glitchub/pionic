@@ -79,6 +79,7 @@ endif
 ifdef I2C
 	$(call raspi-config,do_i2c,off)
 endif
+        systemctl enable --now rsyslog
 else
 # maybe enable SPI and I2C via raspi-config
 ifdef SPI
@@ -86,6 +87,10 @@ ifdef SPI
 endif
 ifdef I2C
 	$(call raspi-config,do_i2c,${I2C})
+endif
+ifeq (${production},on)
+        @echo "Syslog disabled in production mode"
+        systemctl disable --now rsyslog
 endif
 	sync
 	@echo "Reboot to start pionic"
@@ -154,29 +159,6 @@ overscan_right=-32\n\
 overscan_top=-32\n\
 overscan_bottom=-32\n\
 # pionic end\n\
-" | sudo sh -c 'cat >> $@'
-endif
-endif
-
-/etc/fstab:
-	sudo sed -i '/pionic start/,/pionic end/d' $@ # first delete the old
-ifndef CLEAN
-ifeq (${PRODUCTION},on)
-	printf "\
-# pionic start\n\
-tmpfs /tmp tmpfs defaults\n\
-# pionic end\n\
-" | sudo -c 'cat >> $@'
-endif
-endif
-
-/etc/rsyslog.d/pionic.conf:
-	rm -f $@
-ifndef CLEAN
-ifeq (${production},on)
-	printf "\
-# discard all logs\n\
-*.* stop\n\
 " | sudo sh -c 'cat >> $@'
 endif
 endif
