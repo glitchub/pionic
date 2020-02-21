@@ -1,30 +1,34 @@
 # Pi-based Networked Instrument Controller
 
-# Make sure we're running on a Pi
-ifeq ($(wildcard /etc/rpi-issue),)
-$(error Must be run on Raspberry Pi)
-endif
+ifneq (${USER},root)
+# become root if not already
+default ${MAKECMDGOALS}:; sudo -E ${MAKE} ${MAKECMDGOALS}
+else
+# this is undefined by the clean and uninstall targets
+INSTALL=1
 
-ifeq (${USER},root)
-$(error Must not be run as root))
+SHELL=/bin/bash
+
+ifeq ($(shell grep Raspbian.*buster /etc/os-release),)
+    $(error Requires raspbian version 10)
 endif
 
 # Load the configuration file
 include pionic.cfg
+override LAN_IP:=$(strip ${LAN_IP})
+override FORWARD:=$(strip ${FORWARD})
+override UNBLOCK:=$(strip ${UNBLOCK})
+override DHCP_RANGE:=$(strip ${DHCP_RANGE})
+override BEACON:=$(strip ${BEACON})
+override SPI:=$(strip ${SPI})
+override I2C:=$(strip ${I2C})
+override PRODUCTION:=$(strip ${PRODUCTION})
 
-LAN_IP:=$(strip ${LAN_IP})
-ifeq (${LAN_IP},)
+ifndef LAN_IP
 $(error Must define LAN_IP)
 endif
 
-SERVER_IP:=$(strip ${SERVER_IP})
-ifdef CLEAN
-# force full clean
-SERVER_IP=xxx
-BEACON=on
-endif
-
-ifneq (${SERVER_IP},)
+ifdef SERVER_IP
 # Forward 61080 and 61443 to the factory server
 FORWARD += 61080=${SERVER_IP}:80 61443=${SERVER_IP}:443 # forward from DUT to server
 endif
@@ -32,46 +36,70 @@ endif
 # Always unblock SSH
 UNBLOCK += 22
 
-LAN_IP:=$(strip ${LAN_IP})
-FORWARD:=$(strip ${FORWARD})
-UNBLOCK:=$(strip ${UNBLOCK})
-DHCP_RANGE:=$(strip ${DHCP_RANGE})
-BEACON:=$(strip ${BEACON})
-SPI:=$(strip ${SPI})
-I2C:=$(strip ${I2C})
-PRODUCTION:=$(strip ${PRODUCTION})
-
-# Configuration arguments that are passed to rasping Makefile
-RASPING = UNBLOCK="${UNBLOCK}" LAN_IP="${LAN_IP}" FORWARD="${FORWARD}" DHCP_RANGE="${DHCP_RANGE}" PINGABLE="yes"
-
-# invoke raspi-config in non-interactive mode, "on" enables, any other disables
-raspi-config=sudo raspi-config nonint $1 $(if $(filter on,$2),0,1)
-
 # git repos to fetch and build, note the ":" must be escaped
-repos=https\://github.com/glitchub/rasping
-repos+=https\://github.com/glitchub/runfor
-repos+=https\://github.com/glitchub/pifm
-repos+=https\://github.com/glitchub/plio
-repos+=https\://github.com/glitchub/evdump
-repos+=https\://github.com/glitchub/fbtools
-ifeq (${BEACON},on)
-repos+=https\://github.com/glitchub/beacon
-endif
+REPOS += "https\://github.com/glitchub/rasping ; make UNBLOCK='${UNBLOCK}' LAN_IP=${LAN_IP} FORWARD='${FORWARD}' DHCP_RANGE='${DHCP_RANGE}' PINGABLE=yes"
+REPOS += "https\://github.com/glitchub/runfor ; make"
+REPOS += "https\://github.com/glitchub/pifm ; make"
+REPOS += "https\://github.com/glitchub/plio ; make"
+REPOS += "https\://github.com/glitchub/evdump ; make"
+REPOS += "https\://github.com/glitchub/fbtools ; make"
 
 # apt packages to install
-packages=sox
-ifneq (${SERVER_IP},)
-packages+=omxplayer python-pgmagick
-endif
+PACKAGES += sox omxplayer python-pgmagick
 
 # files to be tweaked
-files=/etc/rc.local /boot/config.txt /etc/hosts
+FILES=/etc/rc.local /boot/config.txt /etc/hosts
 
-# rebuild everything
-.PHONY: default clean packages ${repos} ${files}
+# function to invoke raspi-config in non-interactive mode, "on" enables, any other disables
+raspi-config=raspi-config nonint $1 $(if $(filter on,$2),0,1)
 
-default: packages ${repos} ${files}
-ifdef CLEAN
+# function to invoke apt
+APT=DEBIAN_FRONTEND=noninteractive apt
+
+.PHONY: default clean packages repos files
+
+ifdef INSTALL
+# default, install files
+default: files
+ifdef SPI
+	$(call raspi-config,do_spi,${SPI})
+endif
+ifdef I2C
+	$(call raspi-config,do_i2c,${I2C})
+endif
+ifdef PRODUCTION
+	@echo "Syslog disabled in production mode"
+	systemctl disable --now rsyslog
+endif
+	sync
+	@echo "Reboot to start pionic"
+endif
+
+# files depend on repos
+.PHONY: ${FILES}
+files: ${FILES}
+${FILES}: repos
+
+# repos depend on packages
+# The install logic is all in bash, because we must expand the quoted repo names
+repos: packages
+	repos=(${REPOS}); \
+	for r in "$${repos[@]}"; do \
+	    u=$${r%%;*}; m=$${r#*;}; d=$${u#**/};
+	    if ! [[ -d $$d ]]; then \
+	        git clone $$url || exit 1; \
+		if [[ $$m ]]; then \
+		    cd $$dir ; $$make || exit 1; cd ..; \
+		fi; \
+	    fi; \
+	done
+
+# install packages with apt
+packages:; ${APT} install -y ${PACKAGES}
+
+else
+# uninstall files
+default: ${FILES}
 # disable SPI and I2C if we enabled it
 ifdef SPI
 	$(call raspi-config,do_spi,off)
@@ -79,96 +107,62 @@ endif
 ifdef I2C
 	$(call raspi-config,do_i2c,off)
 endif
-	sudo systemctl enable --now rsyslog
-else
-# maybe enable SPI and I2C via raspi-config
-ifdef SPI
-	$(call raspi-config,do_spi,${SPI})
-endif
-ifdef I2C
-	$(call raspi-config,do_i2c,${I2C})
-endif
-ifeq (${PRODUCTION},on)
-	@echo "Syslog disabled in production mode"
-	sudo systemctl disable --now rsyslog
-endif
-	sync
-	@echo "Reboot to start pionic"
-endif
-
-# install and build repos
-${repos}: packages
-ifndef CLEAN
-	if [ -d $(notdir $@) ]; then git -C $(notdir $@) pull; else git clone $@; fi
-	! [ -f $(notdir $@)/Makefile ] || make -C $(notdir $@) $(if $(findstring rasping,$@),${RASPING})
-else
-	! [ -f $(notdir $@)/Makefile ] || make -C $(notdir $@) clean || true
-ifeq (${CLEAN},2)
-	rm -rf $(notdir $@)
-endif
-endif
-
-# install packages
-APT=DEBIAN_FRONTEND=noninteractive sudo -E apt
-packages:
-ifndef CLEAN
-	${APT} install -y ${packages}
-else ifeq (${CLEAN},2)
-	${APT} remove --autoremove --purge -y ${packages}
-endif
+	systemctl enable --now rsyslog
 
 # add "pionic.server" host entry for DUT
 /etc/hosts:
-	sudo sed -i '/pionic start/,/pionic end/d' $@ # first delete the old
-ifndef CLEAN
-	printf "\
-# pionic start\n\
-${LAN_IP}\\tpionic.server\n\
-# pionic end\n\
-" | sudo sh -c 'cat >> $@'
+	sed -i '/pionic start/,/pionic end/d' $@
+ifdef INSTALL
+	echo "# pionic start" >> $@
+	echo "${LAN_IP}\\tpionic.server" >> $@
+	echo "# pionic end" >> $@
 endif
 
 # auto-start pionic.sh
 /etc/rc.local:
-	sudo sed -i '/pionic/d' $@ # first delete the old
-ifndef CLEAN
-ifeq (${SERVER_IP},)
-	sudo sed -i '/^exit/i/home/pi/pionic/pionic.sh start local' $@
+	sed -i '/pionic/d' $@
+ifdef INSTALL
+ifndef SERVER_IP
+	sed -i '/^exit/i/home/pi/pionic/pionic.sh start local' $@
 else
-	sudo sed -i '/^exit/i/home/pi/pionic/pionic.sh start' $@
+	sed -i '/^exit/i/home/pi/pionic/pionic.sh start' $@
 endif
 endif
 
 # configure kernel
 /boot/config.txt:
-	sudo sed -i '/pionic start/,/pionic end/d' $@ # first delete the old
-ifndef CLEAN
-ifneq (${SERVER_IP},)
-	printf "\
-# pionic start\n\
-[all]\n\
-hdmi_force_hotplug=1\n\
-hdmi_group=1\n\
-hdmi_mode=16 # 1920x1080\n\
-hdmi_blanking=0\n\
-hdmi_ignore_edid=0x5a000080\n\
-gpu_mem=64\n\
-# avoid_warnings=1\n\
-overscan_left=-32\n\
-overscan_right=-32\n\
-overscan_top=-32\n\
-overscan_bottom=-32\n\
-# pionic end\n\
-" | sudo sh -c 'cat >> $@'
+	sed -i '/pionic start/,/pionic end/d' $@
+ifdef INSTALL
+ifdef SERVER_IP
+	echo "# pionic start" >> $@
+	echo "[all]" >> $@
+	echo "hdmi_force_hotplug=1" >> $@
+	echo "hdmi_group=1" >> $@
+	echo "hdmi_mode=16 # 1920x1080" >> $@
+	echo "hdmi_blanking=0" >> $@
+	echo "hdmi_ignore_edid=0x5a000080" >> $@
+	echo "gpu_mem=64" >> $@
+	echo "# avoid_warnings=1" >> $@
+	echo "overscan_left=-32" >> $@
+	echo "overscan_right=-32" >> $@
+	echo "overscan_top=-32" >> $@
+	echo "overscan_bottom=-32" >> $@
+	echo "# pionic end" >> $@
 endif
 endif
 
 # Clean config files but don't remove packages or repos
 clean:
-	make CLEAN=1
+	make INSTALL=
 	@echo "Clean complete"
 
 # Clean config files and remove packages and repos
 uninstall:
-	make CLEAN=2
+	make INSTALL=
+	repos=(${REPOS}); \
+	for r in "$${repos[@]}"; do \
+	    u=$${r%%;*}; d=$${g##*/}; \
+	    rm -rf $$d; \
+	done
+	${APT} remove --autoremove --purge -y ${packages}
 	@echo "Uninstall complete"
