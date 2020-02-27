@@ -92,8 +92,7 @@ repos: packages
 			git clone $$repo || exit 1; \
 		fi; \
 		if [[ $$build ]]; then \
-			echo $$build; \
-			( cd $$dir ; $$build ) || exit 1; \
+			( cd $$dir ; echo Running "$$build"; eval "$$build" ) || exit 1; \
 		fi; \
 	done
 
