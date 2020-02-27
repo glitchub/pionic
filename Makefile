@@ -37,15 +37,15 @@ endif
 UNBLOCK += 22
 
 # Install the rasping repo
-REPOS += "https://github.com/glitchub/rasping	   make UNBLOCK='${UNBLOCK}' LAN_IP=${LAN_IP} FORWARD='${FORWARD}' DHCP_RANGE='${DHCP_RANGE}' PINGABLE=yes"
+REPOS += "https://github.com/glitchub/rasping  make UNBLOCK='${UNBLOCK}' LAN_IP=${LAN_IP} FORWARD='${FORWARD}' DHCP_RANGE='${DHCP_RANGE}' PINGABLE=yes"
 endif
 
 # Other repos to install
-REPOS += "https://github.com/glitchub/runfor	make"
-REPOS += "https://github.com/glitchub/pifm	make"
-REPOS += "https://github.com/glitchub/plio	make"
-REPOS += "https://github.com/glitchub/evdump	make"
-REPOS += "https://github.com/glitchub/fbtools	make"
+REPOS += "https://github.com/glitchub/runfor   make"
+REPOS += "https://github.com/glitchub/pifm     make"
+REPOS += "https://github.com/glitchub/plio     make"
+REPOS += "https://github.com/glitchub/evdump   make"
+REPOS += "https://github.com/glitchub/fbtools  make"
 
 # apt packages to install
 PACKAGES += sox omxplayer python-pgmagick
@@ -92,6 +92,7 @@ repos: packages
 			git clone $$repo || exit 1; \
 		fi; \
 		if [[ $$build ]]; then \
+			echo $$build; \
 			( cd $$dir ; $$build ) || exit 1; \
 		fi; \
 	done
