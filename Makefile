@@ -139,8 +139,10 @@ ifdef INSTALL
         echo 'Wants=network-online.target' >> $@
         echo 'After=network-online.target' >> $@
 	echo '[Service]' >> $@
-	echo 'Type=forking' >> $@
+        echo 'Type=forking' >> $@
+        echo 'PIDFile=/tmp/pionic/pid' >> $@
 	echo 'ExecStart=${PWD}/pionic.sh start $(if ${LAN_IP},,local)' >> $@
+	echo 'ExecStop=${PWD}/pionic.sh stop' >> $@
 	echo '[Install]' >> $@
 	echo 'WantedBy=multi-user.target' >> $@
 endif
