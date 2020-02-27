@@ -180,3 +180,5 @@ uninstall:
 	for r in ${REPOS}; do read repo build < <(echo $$r); rm -rf $${repo##*/}; done
 	${APT} remove --autoremove --purge -y ${packages}
 	@echo "Uninstall complete"
+
+endif
