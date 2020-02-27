@@ -37,15 +37,15 @@ endif
 UNBLOCK += 22
 
 # Install the rasping repo
-REPOS += "https://github.com/glitchub/rasping      make UNBLOCK='${UNBLOCK}' LAN_IP=${LAN_IP} FORWARD='${FORWARD}' DHCP_RANGE='${DHCP_RANGE}' PINGABLE=yes"
+REPOS += "https://github.com/glitchub/rasping	   make UNBLOCK='${UNBLOCK}' LAN_IP=${LAN_IP} FORWARD='${FORWARD}' DHCP_RANGE='${DHCP_RANGE}' PINGABLE=yes"
 endif
 
 # Other repos to install
-REPOS += "https://github.com/glitchub/runfor    make"
-REPOS += "https://github.com/glitchub/pifm      make"
-REPOS += "https://github.com/glitchub/plio      make"
-REPOS += "https://github.com/glitchub/evdump    make"
-REPOS += "https://github.com/glitchub/fbtools   make"
+REPOS += "https://github.com/glitchub/runfor	make"
+REPOS += "https://github.com/glitchub/pifm	make"
+REPOS += "https://github.com/glitchub/plio	make"
+REPOS += "https://github.com/glitchub/evdump	make"
+REPOS += "https://github.com/glitchub/fbtools	make"
 
 # apt packages to install
 PACKAGES += sox omxplayer python-pgmagick
@@ -110,7 +110,7 @@ ifdef I2C
 	$(call raspi-config,do_i2c,off)
 endif
 ifdef PRODUCTION
-        # reinstate syslog
+	# reinstate syslog
 	systemctl enable --now rsyslog
 endif
 
@@ -136,11 +136,11 @@ endif
 ifdef INSTALL
 	echo '[Unit]' >> $@
 	echo 'Description=Pi-based Network Instrument Controller' >> $@
-        echo 'Wants=network-online.target' >> $@
-        echo 'After=network-online.target' >> $@
+	echo 'Wants=network-online.target' >> $@
+	echo 'After=network-online.target' >> $@
 	echo '[Service]' >> $@
-        echo 'Type=forking' >> $@
-        echo 'PIDFile=/tmp/pionic/pid' >> $@
+	echo 'Type=forking' >> $@
+	echo 'PIDFile=/tmp/pionic/pid' >> $@
 	echo 'ExecStart=${PWD}/pionic.sh start $(if ${LAN_IP},,local)' >> $@
 	echo 'ExecStop=${PWD}/pionic.sh stop' >> $@
 	echo '[Install]' >> $@
