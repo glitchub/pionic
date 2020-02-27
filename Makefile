@@ -43,7 +43,7 @@ endif
 # Other repos to install
 REPOS += "https://github.com/glitchub/runfor   make"
 REPOS += "https://github.com/glitchub/pifm     make"
-REPOS += "https://github.com/glitchub/plio     make"
+REPOS += https://github.com/glitchub/plio # does not build!
 REPOS += "https://github.com/glitchub/evdump   make"
 REPOS += "https://github.com/glitchub/fbtools  make"
 
