@@ -62,7 +62,7 @@ APT=DEBIAN_FRONTEND=noninteractive apt
 .PHONY: default clean packages repos files
 
 ifdef INSTALL
-# default, install files
+# install
 default: files
 ifdef SPI
 	$(call raspi-config,do_spi,${SPI})
@@ -75,7 +75,6 @@ ifdef PRODUCTION
 endif
 	sync
 	@echo "Reboot to start pionic"
-endif
 
 # files depend on repos
 .PHONY: ${FILES}
@@ -101,7 +100,7 @@ repos: packages
 packages:; ${APT} install -y ${PACKAGES}
 
 else
-# uninstall files
+# clean or uninstall, returns to target below
 default: ${FILES} legacy
 # disable SPI and I2C if we enabled it
 ifdef SPI
@@ -110,8 +109,11 @@ endif
 ifdef I2C
 	$(call raspi-config,do_i2c,off)
 endif
+ifdef PRODUCTION
         # reinstate syslog
 	systemctl enable --now rsyslog
+endif
+
 endif
 
 # delete legacy stuff
@@ -128,17 +130,14 @@ ifdef INSTALL
 	echo "# pionic end" >> $@
 endif
 
-OPTS=start
-ifndef SERVER_IP
-    OPTS += local
-endif
-
 # create pionic systemd service
 /lib/systemd/system/pionic.service:
 	rm -f $@
 ifdef INSTALL
 	echo '[Unit]' >> $@
 	echo 'Description=Pi-based Network Instrument Controller' >> $@
+        echo 'Wants=network-online.target' >> $@
+        echo 'After=network-online.target' >> $@
 	echo '[Service]' >> $@
 	echo 'Type=forking' >> $@
 	echo 'ExecStart=${PWD}/pionic.sh start $(if ${LAN_IP},,local)' >> $@
