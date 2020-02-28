@@ -63,6 +63,7 @@ endif
 ifdef PRODUCTION
 	systemctl disable rsyslog
 endif
+        systemctl enable pionic
 ifdef LAN_IP
 	# Install the NAT gateway
 	[ -d rasping ] && git -C rasping pull || git clone https://github.com/glitchub/rasping
