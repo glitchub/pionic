@@ -26,7 +26,8 @@ PRODUCTION:=$(strip ${PRODUCTION})
 ifdef LAN_IP
 # We'll install rasping if LAN_IP is enabled, these are the parameters it requires
 FORWARD:=$(strip ${FORWARD})
-UNBLOCK:=$(strip ${UNBLOCK} 22) # always unblock 22
+UNBLOCK += 22 # always unblock 22
+UNBLOCK:=$(strip ${UNBLOCK})
 DHCP_RANGE:=$(strip ${DHCP_RANGE})
 
 ifdef SERVER_IP
@@ -77,7 +78,7 @@ ${FILES}: repos
 
 # Repos depend on packages. This logic is in bash because we must expand the quoted repo names
 repos: packages
-	for r in ${REPOS}; do \
+	@for r in ${REPOS}; do \
 		read repo build < <(echo $$r); \
 		dir=$${repo##*/}; \
 		if [ -d $$dir ]; then \
@@ -170,7 +171,7 @@ clean:
 # Clean config files and remove packages and repos
 uninstall:
 	make INSTALL=
-	for r in ${REPOS}; rm -rf $${r##*/}; done
+	@for r in ${REPOS}; rm -rf $${r##*/}; done
 	${APT} remove --autoremove --purge -y ${PACKAGES}
 	if [ -d rasping ]; then make -C rasping uninstall && rm -rf rasping; fi
 	@echo "Uninstall complete"
