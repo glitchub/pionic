@@ -30,7 +30,7 @@ evdump=$PIONIC/evdump/evdump
 if [ -x $fbtext ]; then
     trap 'x=$?;
           set +eu;
-          echo "0 exit $x";
+          echo "$0 exit $x";
           kill $(jobs -p) &>/dev/null && wait $(jobs -p);
           echo 1 > /sys/class/vtconsole/vtcon1/bind;
           tput -T linux clear > /dev/tty1;
