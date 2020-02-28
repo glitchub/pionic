@@ -18,26 +18,22 @@ Physical configuration:
 
 Pionic provides:
 
-    DNS proxy, and resolves 'pioinc.server', returning its own LAN address.
+    DNS proxy, and resolves 'pionic.server', returning its own LAN address.
 
     NAT translation from the DUT to the factory server. Port 61080 is forwarded
     to factory server port 80, and 61443 is forwarded to factory server port
     443.
 
     If enabled, the beacon server is started on the DUT interface, this
-    transmits "beacon ethernet packets. The DUT listens for beacons during
+    transmits "beacon" ethernet packets. The DUT listens for beacons during
     boot, if detected then it enters factory diagnostic mode and brings up
     pre-defined static IP in the same subnet.
 
-    Alternatively if the DUT will automatically bring up static IP during boot,
-    it can simply attempt to access the factory server via port 61080, if the
+    Alternatively if the DUT automatically brings up static IP during boot, it
+    can simply attempt to access the factory server via port 61080, if the
     expected response is received then it enters diagnostic mode.
 
-    Access to test-specific CGI's on port 80, the DUT uses curl e.g.:
-
-        curl -f http://pionic.server/test
-
-    User interface via the touchscreen display.
+    Optional user interface via the touchscreen display.
 
     Customizable test fixture support.
 
@@ -45,49 +41,35 @@ To install:
 
     Download the SDcard image:
 
-        wget https://downloads.raspberrypi.org/raspbian_lite/images/raspbian_lite-2019-06-24/2019-06-20-raspbian-buster-lite.zip
+        wget https://downloads.raspberrypi.org/raspbian_lite/images/raspbian_lite-2020-02-14/2020-02-13-raspbian-buster-lite.zip
 
-    Unzip and extract file 2019-06-20-raspbin-buster-lite.img (about 1.8GB).
+    Unzip and extract file 2020-02-14-raspbin-buster-lite.img (about 1.8GB).
 
-    Copy the img file to an 8GB SDcard using dd on linux or Win32DiskImager
+    Copy the .img file to an 8GB SDcard using dd on linux or Win32DiskImager
     on Windows.
 
-    Insert the card into the RPi, attach display or monitor and usb keyboard,
-    attach ethernet. It should boot to a text console (if it boots to X, you
-    have the wrong image).  Log in as user 'pi', password 'raspberry'
+    Insert the card into the Pi, attach display or monitor and usb keyboard,
+    attach ethernet and apply power. Pi should boot to a text login prompt.
+
+    Log in as user 'pi', password 'raspberry'.
 
     Run:
-        sudo apt update
-        sudo apt upgrade
-        sudo reboot
+        sudo -s
+        systemctl enable ssh
+        passwd pi    <- I usually just set the password to "pi"
+        apt update
+        apt upgrade
+        apt install git
+        reboot
 
-    Log back in and:
+    The system will reboot. Log back in via text console or ssh and run:
 
-        sudo apt install git
         git clone https://github.com/glitchub/pionic
         cd pionic
 
-    Review pionic.cfg and make desired changes, then:
+    Review pionic.cfg and make any desired changes, then:
 
         make
+        sudo reboot
 
-    Assuming install is completed normally, just esure that a USB dongle is
-    attached and reboot. The Pi will boot and run the script pionic.sh.
-
-    pionic.sh waits for networking to be up, then reqests a fixture driver name
-    from the server. If no name is provided then it uses 'default'.
-
-    If the named driver directory does exist in the './fixtures', then
-    pionic.sh will download fixtgures.tar.gz from the server, unpack it to a
-    temp directory, and look for the fixture directory there.
-
-    The fixture directory will contain script fixture.sh, pionic calls that
-    script and does not exit it to return.
-
-    Note it is possible to install pionic in 'local' mode by setting
-    "SERVER_IP=" without a value. It will not attempt to talk to the server and
-    will start the 'local' fixture driver, i.e. ./fixtures/local/fixture.sh.
-    Currently the local driver just starts a cgi server that supports the mkfm
-    command option.
-
-
+    You should see a screen indicating "TEST STATION XX READY".

@@ -136,7 +136,7 @@ ifdef INSTALL
 	echo 'Wants=network-online.target' >> $@
 	echo 'After=network-online.target' >> $@
 	echo '[Service]' >> $@
-	echo 'ExecStart=${PWD}/pionic.sh start $(if ${LAN_IP},,local)' >> $@
+	echo 'ExecStart=${CURDIR}/pionic.sh $(if ${LAN_IP},,local)' >> $@
 	echo '[Install]' >> $@
 	echo 'WantedBy=multi-user.target' >> $@
 endif
