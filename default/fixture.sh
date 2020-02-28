@@ -32,8 +32,8 @@ if [ -x $fbtext ]; then
           set +eu;
           kill $(jobs -p) &>/dev/null && wait $(jobs -p);
           echo 1 > /sys/class/vtconsole/vtcon1/bind;
-          tput -T linux > /dev/tty1
-          $PIONIC/fbtools/fbclear
+          tput -T linux clear > /dev/tty1;
+          systemctl restart getty@tty1;
           (($x)) && echo EXIT $x;
           exit $x' EXIT
 
@@ -42,7 +42,7 @@ if [ -x $fbtext ]; then
 
     logo() { printf "TEST STATION $STATION READY" | $fbtext -cwhite:blue -gc -s40 -b1 -; }
 
-    if [ -x $evdump && -e /dev/input/mouse0 ]; then
+    if [[ -x $evdump && -e /dev/input/mouse0 ]]; then
         # We have touch, show logo and refresh on two taps within one second
         while true; do
             logo
