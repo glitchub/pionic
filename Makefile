@@ -24,33 +24,25 @@ override I2C:=$(strip ${I2C})
 override PRODUCTION:=$(strip ${PRODUCTION})
 
 ifdef LAN_IP
-# Install rasping is LAN_IP is enabled
+# We'll install rasping if LAN_IP is enabled, these are the parameters it requires
 override FORWARD:=$(strip ${FORWARD})
 override UNBLOCK:=$(strip ${UNBLOCK})
 override DHCP_RANGE:=$(strip ${DHCP_RANGE})
+
+# Always unblock SSH
+UNBLOCK += 22
 
 ifdef SERVER_IP
 # Forward 61080 and 61443 to the factory server
 FORWARD += 61080=${SERVER_IP}:80 61443=${SERVER_IP}:443 # forward from DUT to server
 endif
-# Always unblock SSH
-UNBLOCK += 22
-
-# Install the rasping repo
-REPOS += "https://github.com/glitchub/rasping  make UNBLOCK='${UNBLOCK}' LAN_IP=${LAN_IP} FORWARD='${FORWARD}' DHCP_RANGE='${DHCP_RANGE}' PINGABLE=yes"
 endif
 
-# Other repos to install
+# Other repos to install, first word is the actual repo, the rest is the build command
 REPOS += "https://github.com/glitchub/runfor   make"
-REPOS += "https://github.com/glitchub/pifm     make"
-REPOS += https://github.com/glitchub/plio # does not build!
-REPOS += "https://github.com/glitchub/evdump   make"
-REPOS += "https://github.com/glitchub/fbtools  make"
+REPOS += "https://github.com/glitchub/plio" # does not build
 
-# apt packages to install
-PACKAGES += sox omxplayer python-pgmagick
-
-# files to be tweaked
+# Files to be tweaked
 FILES=/lib/systemd/system/pionic.service /boot/config.txt /etc/hosts
 
 # function to invoke raspi-config in non-interactive mode, "on" enables, any other disables
@@ -72,6 +64,11 @@ ifdef I2C
 endif
 ifdef PRODUCTION
 	systemctl disable rsyslog
+endif
+ifdef LAN_IP
+	# Install the NAT gateway
+	[ -d rasping ] && git -C rasping pull || git clone https://github.com/glitchub/rasping
+	make -C rasping UNBLOCK='${UNBLOCK}' LAN_IP=${LAN_IP} FORWARD='${FORWARD}' DHCP_RANGE='${DHCP_RANGE}' PINGABLE=yes
 endif
 	sync
 	@echo "Reboot to start pionic"
@@ -113,7 +110,6 @@ ifdef PRODUCTION
 	# reinstate syslog
 	systemctl enable --now rsyslog
 endif
-
 endif
 
 # delete legacy stuff
@@ -177,8 +173,9 @@ clean:
 # Clean config files and remove packages and repos
 uninstall:
 	make INSTALL=
-	for r in ${REPOS}; do read repo build < <(echo $$r); rm -rf $${repo##*/}; done
-	${APT} remove --autoremove --purge -y ${packages}
+	for r in ${REPOS}; rm -rf $${r##*/}; done
+	${APT} remove --autoremove --purge -y ${PACKAGES}
+	if [ -d rasping ]; then make -C rasping uninstall && rm -rf rasping; fi
 	@echo "Uninstall complete"
 
 endif
