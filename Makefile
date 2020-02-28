@@ -24,16 +24,16 @@ I2C:=$(strip ${I2C})
 PRODUCTION:=$(strip ${PRODUCTION})
 
 ifdef LAN_IP
-# We'll install rasping if LAN_IP is enabled, these are the parameters it requires
-FORWARD:=$(strip ${FORWARD})
-UNBLOCK += 22 # always unblock 22
-UNBLOCK:=$(strip ${UNBLOCK})
-DHCP_RANGE:=$(strip ${DHCP_RANGE})
-
+# Install rasping if LAN_IP is enabled, these are the parameters it requires
 ifdef SERVER_IP
 # Forward 61080 and 61443 to the factory server
 FORWARD += 61080=${SERVER_IP}:80 61443=${SERVER_IP}:443 # forward from DUT to server
 endif
+UNBLOCK += 22 # always unblock 22
+
+FORWARD:=$(strip ${FORWARD})
+UNBLOCK:=$(strip ${UNBLOCK})
+DHCP_RANGE:=$(strip ${DHCP_RANGE})
 endif
 
 # Other repos to install, first word is the actual repo, the rest is the build command
