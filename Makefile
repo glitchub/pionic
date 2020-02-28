@@ -2,6 +2,7 @@
 
 ifneq (${USER},root)
 # become root if not already
+.PHONY: default ${MAKECMDGOALS}
 default ${MAKECMDGOALS}:; sudo -E ${MAKE} ${MAKECMDGOALS}
 else
 
@@ -52,7 +53,6 @@ APT=DEBIAN_FRONTEND=noninteractive apt
 .PHONY: default clean packages repos files
 
 ifdef INSTALL
-# install
 default: files
 ifdef SPI
 	$(call raspi-config,do_spi,${SPI})
