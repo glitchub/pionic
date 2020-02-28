@@ -30,11 +30,11 @@ evdump=$PIONIC/evdump/evdump
 if [ -x $fbtext ]; then
     trap 'x=$?;
           set +eu;
+          echo "0 exit $x";
           kill $(jobs -p) &>/dev/null && wait $(jobs -p);
           echo 1 > /sys/class/vtconsole/vtcon1/bind;
           tput -T linux clear > /dev/tty1;
           systemctl restart getty@tty1;
-          (($x)) && echo EXIT $x;
           exit $x' EXIT
 
     # detach console from framebuffer
@@ -43,6 +43,7 @@ if [ -x $fbtext ]; then
     logo() { printf "TEST STATION $STATION READY" | $fbtext -cwhite:blue -gc -s40 -b1 -; }
 
     if [[ -x $evdump && -e /dev/input/mouse0 ]]; then
+        echo "Starting logo loop"
         # We have touch, show logo and refresh on two taps within one second
         while true; do
             logo
@@ -52,7 +53,7 @@ if [ -x $fbtext ]; then
             done
         done < <($evdump -t1 -c272 -v1 mouse0 2>/dev/null)
     else
-        # No touch, just show logo and wait
+        echo "Showing static logo"
         logo
         wait
     fi
@@ -60,10 +61,10 @@ else
     # no frame buffer, just print message and wait
     trap 'x=$?;
           set +eu;
+          echo "$0 exit $x";
           kill $(jobs -p) &>/dev/null && wait $(jobs -p);
-          (($x)) && echo EXIT $x;
           exit $x' EXIT
 
-    echo "TEST STATION $STATION READY"
+    echo "Test station $STATION ready"
     wait
 fi

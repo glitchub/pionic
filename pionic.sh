@@ -22,21 +22,18 @@ here=$(realpath ${0%/*})
 
 if [[ ${1:-} == local ]]; then
     station=local
-    echo "Local mode, using default fixture"
     fixture=$here/default/fixture.sh
 else
     ip=$(ip -4 -o addr show eth0 2>/dev/null | awk '{print $4}' FS=' +|/')
     [[ $ip ]] || die "Requires an IP address on eth0"
     # get the last octet
     station=${ip##*.}
-    echo "Test station ID is $station"
+    echo "Requesting fixture for station ID $station"
     # get fixture name from server
-    echo "Requesting fixture name"
     curl="curl --connect-timeout 2 -qsSf"
-    name=$($curl "http://localhost:61080/cgi-bin/factory?service=fixture") || die "No response from server"
+    name=$($curl "http://localhost:61080/cgi-bin/factory?service=fixture") || die "Request failed"
     name=${name,,} # lowercase
     if [[ -z $name || $name == none ]]; then
-        echo "Using default fixture"
         name=default
         fixture=$here/default/fixture.sh
     else
@@ -47,9 +44,9 @@ else
         $curl $tarball | tar -C $tmp/fixture -xz || die "Fetch failed"
         fixture="$tmp/fixture/fixture.sh"
     fi
-    [[ -x $fixture ]] || die "Fixture driver '$fixture' not found"
-    echo "Fixture driver is '$fixture'"
 fi
+echo "Fixture driver is '$fixture'"
+[[ -x $fixture ]] || die "Fixture driver not found"
 
 # Start beacon server if it's installed
 if [ -d $here/beacon ] && ! pgrep -f beacon &>/dev/null; then
@@ -58,10 +55,9 @@ if [ -d $here/beacon ] && ! pgrep -f beacon &>/dev/null; then
 fi
 
 # try to clean up on exit
-trap 'x=$?; set +eu; kill $(jobs -p) &>/dev/null && wait $(jobs -p); exit $x' EXIT
+trap 'x=$?; echo $0 exit $x; set +eu; kill $(jobs -p) &>/dev/null && wait $(jobs -p);' EXIT
 
 # Run the fixture driver
-echo "Starting '$fixture'"
 $fixture $here $station
 
 # It shouldn't return
