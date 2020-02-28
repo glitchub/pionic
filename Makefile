@@ -16,21 +16,18 @@ endif
 
 # Load the configuration file
 include pionic.cfg
-override LAN_IP:=$(strip ${LAN_IP})
-override SERVER_IPL=$(strip ${SERVER_IP})
+LAN_IP=$(strip ${LAN_IP})
+SERVER_IP=$(strip ${SERVER_IP})
 
-override SPI:=$(strip ${SPI})
-override I2C:=$(strip ${I2C})
-override PRODUCTION:=$(strip ${PRODUCTION})
+SPI:=$(strip ${SPI})
+I2C:=$(strip ${I2C})
+PRODUCTION:=$(strip ${PRODUCTION})
 
 ifdef LAN_IP
 # We'll install rasping if LAN_IP is enabled, these are the parameters it requires
-override FORWARD:=$(strip ${FORWARD})
-override UNBLOCK:=$(strip ${UNBLOCK})
-override DHCP_RANGE:=$(strip ${DHCP_RANGE})
-
-# Always unblock SSH
-UNBLOCK += 22
+FORWARD:=$(strip ${FORWARD})
+UNBLOCK:=$(strip ${UNBLOCK} 22) # always unblock 22
+DHCP_RANGE:=$(strip ${DHCP_RANGE})
 
 ifdef SERVER_IP
 # Forward 61080 and 61443 to the factory server
