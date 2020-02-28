@@ -1,0 +1,75 @@
+Pionic - PI-based Networked Instrument Controller
+
+Physical configuration:
+
+    The network interface connects to the factory subnet and receives an
+    address via DHCP. The DHCP server is configured to assign a specific IP
+    address for the PI's MAC, presumably correlates to the test station ID.
+
+    A USB ethernet dongle attaches to the DUT and gets a static IP (defined in the Makefile
+    pionic.cfg).
+
+    The 40-pin I/O connector attaches to test instrumentation, which is
+    customized for the specific test station requires and not in scope of this
+    document.
+
+    An "official" 7-inch touchscreen (attaches to the RPi display connector,
+    NOT to HDMI).
+
+Pionic provides:
+
+    DNS proxy, and resolves 'pionic.server', returning its own LAN address.
+
+    NAT translation from the DUT to the factory server. Port 61080 is forwarded
+    to factory server port 80, and 61443 is forwarded to factory server port
+    443.
+
+    If enabled, the beacon server is started on the DUT interface, this
+    transmits "beacon" ethernet packets. The DUT listens for beacons during
+    boot, if detected then it enters factory diagnostic mode and brings up
+    pre-defined static IP in the same subnet.
+
+    Alternatively if the DUT automatically brings up static IP during boot, it
+    can simply attempt to access the factory server via port 61080, if the
+    expected response is received then it enters diagnostic mode.
+
+    Optional user interface via the touchscreen display.
+
+    Customizable test fixture support.
+
+To install:
+
+    Download the SDcard image:
+
+        wget https://downloads.raspberrypi.org/raspbian_lite/images/raspbian_lite-2020-02-14/2020-02-13-raspbian-buster-lite.zip
+
+    Unzip and extract file 2020-02-14-raspbin-buster-lite.img (about 1.8GB).
+
+    Copy the .img file to an 8GB SDcard using dd on linux or Win32DiskImager
+    on Windows.
+
+    Insert the card into the Pi, attach display or monitor and usb keyboard,
+    attach ethernet and apply power. Pi should boot to a text login prompt.
+
+    Log in as user 'pi', password 'raspberry'.
+
+    Run:
+        sudo -s
+        systemctl enable ssh
+        passwd pi    <- I usually just set the password to "pi"
+        apt update
+        apt upgrade
+        apt install git
+        reboot
+
+    The system will reboot. Log back in via text console or ssh and run:
+
+        git clone https://github.com/glitchub/pionic
+        cd pionic
+
+    Review pionic.cfg and make any desired changes, then:
+
+        make
+        sudo reboot
+
+    You should see a screen indicating "TEST STATION XX READY".

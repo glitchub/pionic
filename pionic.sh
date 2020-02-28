@@ -1,6 +1,8 @@
 #!/bin/bash -eu
 
-# This starts the test station operation. It runs in background at boot.
+# This starts the test station. It is executed by systemd after the upstream
+# network is up. It looks for default or downloadable test fixture driver and
+# runs fixture.sh.
 
 # Report errors before exit, this tries to look like the 'unbound variable' error
 trap 'echo $0: line $LINENO: exit status $? >&2' ERR
@@ -8,104 +10,55 @@ trap 'echo $0: line $LINENO: exit status $? >&2' ERR
 # abort with a message
 die() { echo "$0: $*" >&2; exit 1; }
 
-grep -q Raspberry /etc/rpi-issue &>/dev/null || die "Requires a Raspberry Pi"
-((UID==0)) || die "Must be run as root"
+((UID==0)) || die "Must be root"
 
+# create a tmp directory
+tmp=/tmp/pionic
+rm -rf $tmp
+mkdir -p $tmp
+
+# script is in pionic top level directory
 here=$(realpath ${0%/*})
 
-# Return ip address for interface $1 and true, or false if no IP
-ipaddr() { local s=$(ip -4 -o a show dev $1 2>/dev/null | awk '{print $4}'); [[ $s ]] && echo $s; }
+if [[ ${1:-} == local ]]; then
+    station=local
+    fixture=$here/default/fixture.sh
+else
+    ip=$(ip -4 -o addr show eth0 2>/dev/null | awk '{print $4}' FS=' +|/')
+    [[ $ip ]] || die "Requires an IP address on eth0"
+    # get the last octet
+    station=${ip##*.}
+    echo "Requesting fixture for station ID $station"
+    # get fixture name from server
+    curl="curl --connect-timeout 2 -qsSf"
+    name=$($curl "http://localhost:61080/cgi-bin/factory?service=fixture") || die "Request failed"
+    name=${name,,} # lowercase
+    if [[ -z $name || $name == none ]]; then
+        name=default
+        fixture=$here/default/fixture.sh
+    else
+        # try to download it
+        tarball="http://localhost:61080/downloads/fixtures/$name.tar.gz"
+        echo "Fetching $tarball..."
+        mkdir $tmp/fixture
+        $curl $tarball | tar -C $tmp/fixture -xz || die "Fetch failed"
+        fixture="$tmp/fixture/fixture.sh"
+    fi
+fi
+echo "Fixture driver is '$fixture'"
+[[ -x $fixture ]] || die "Fixture driver not found"
 
-# Where to put temp files, cgi/factory also needs to know this
-tmp=/tmp/pionic
+# Start beacon server if it's installed
+if [ -d $here/beacon ] && ! pgrep -f beacon &>/dev/null; then
+    echo "Starting beacon"
+    $here/beacon/beacon send br0 &
+fi
 
-# curl timeout after 4 seconds, -q=disable curl.config, -s=silent (no status), -S=show error, -f=fail with exit status 22
-curl="curl --connect-timeout 2 -qsSf"
+# try to clean up on exit
+trap 'x=$?; echo $0 exit $x; set +eu; kill $(jobs -p) &>/dev/null && wait $(jobs -p);' EXIT
 
-case "${1:-}" in
-    start)
-        (
-            # create a tmp directory
-            rm -rf $tmp
-            mkdir -p $tmp
+# Run the fixture driver
+$fixture $here $station
 
-            # store subshell pid for 'stop'
-            echo $BASHPID > $tmp/pid
-
-            station=""
-            [[ ${2:-} == local ]] && station=local
-
-            # after this point, kill shell children on exit
-            trap 'exs=$?;
-                echo 1 > /sys/class/vtconsole/vtcon1/bind;
-                kill $(jobs -p) &>/dev/null && wait $(jobs -p) || true;
-                exit $exs' EXIT
-
-            if [[ $station != local ]]; then
-                # require eth0 for normal operation
-                while ((! $(cat /sys/class/net/eth0/carrier))); do
-                    echo "Ethernet is not attached"
-                    sleep 1
-                done
-
-                while ! station_ip=$(ipaddr eth0); do
-                    echo "Waiting for station ID (MAC=$(cat /sys/class/net/eth0/address))"
-                    sleep 1
-                done
-
-                station=${station_ip##*.}
-                station=${station%/*}
-            fi
-
-            while ! ipaddr br0 &>/dev/null; do
-                echo "Waiting for br0 to come up"
-                sleep 1
-            done
-
-            while ! [[ $(bridge link show 2>/dev/null) ]]; do
-                echo "Waiting for bridged device (is USB ethernet attached?)"
-                sleep 1
-            done
-
-            # start beacon if enabled
-            ! [ -d $here/beacon ] || pgrep -f beacon &>/dev/null || $here/beacon/beacon send br0 &
-
-
-            if [[ $station == local ]]; then
-                # use local fixture driver
-                fixture=$here/fixtures/local/fixture.sh
-            else
-                # get fixture name from server
-                echo "Requesting fixture name"
-                name=$($curl "http://localhost:61080/cgi-bin/factory?service=fixture") || die "No response from server"
-                name=${name,,} # lowercase
-                [[ $name && $name != none ]] || name=default
-                fixture=$here/fixtures/$name/fixture.sh
-                if ! [ -x $fixture ]; then
-                    # try to download it
-                    tarball="http://localhost:61080/downloads/fixtures/$name.tar.gz"
-                    echo "Fetching $tarball..."
-                    mkdir $tmp/fixture
-                    $curl $tarball | tar -C $tmp/fixture -xz || die "Fetch failed"
-                    fixture="$tmp/fixture/fixture.sh"
-                fi
-            fi
-
-            [[ -x $fixture ]] || die "Fixture driver '$fixture' not found"
-            echo "Starting '$fixture'"
-            $fixture $here $station
-            # in theory, it doesn't return
-            die "'$fixture' exit status $?"
-        ) &
-        ;;
-
-    stop)
-        if [ -e $tmp/pid ]; then
-            kill $(cat $tmp/pid) &>/dev/null || true
-        fi
-        ;;
-
-    *)  die "Usage: $0 stop | start [ local ]"
-        ;;
-esac
-true
+# It shouldn't return
+die "'$fixture' exit status $?"
