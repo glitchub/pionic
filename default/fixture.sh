@@ -19,7 +19,7 @@ cgiserver=$BASE/cgiserver
 
 echo "Starting CGI server on station $STATION"
 pkill -f cgiserver &>/dev/null || true
-env -i BASE=$BASE PATH=$PATH STATION=$STATION PIONIC=$PIONIC $cgiserver $BASE 80 2>&1 | logger &
+env -i BASE=$BASE PATH=$PATH STATION=$STATION PIONIC=$PIONIC $cgiserver $BASE 80 2>&1 &
 sleep 1
 pgrep -f cgiserver &>/dev/null || die "cgiserver did not start"
 
