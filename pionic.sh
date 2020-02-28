@@ -26,10 +26,10 @@ if [[ ${2:-} == local ]]; then
     echo "Test station is local"
     fixture=$here/fixtures/local/fixture.sh
 else
-    ip=$(ip -4 -o show dev eth0 2>/dev/null | awk '{print $4}')
+    ip=$(ip -4 -o addr show eth0 2>/dev/null | awk '{print $4}' FS=' +|/')
     [[ $ip ]] || die "Requires an IP address on eth0"
+    # get the last octet
     station=${ip##*.}
-    station=${%/*}
     echo "Test station ID is $station"
     # get fixture name from server
     echo "Requesting fixture name"

@@ -115,16 +115,18 @@ endif
 legacy:
 	sed -i '/pionic/d' /etc/rc.local
 
-# add "pionic.server" host entry for DUT
+# Add "pionic.server" hostname
 /etc/hosts:
 	sed -i '/pionic start/,/pionic end/d' $@
 ifdef INSTALL
+ifdef LAN_IP
 	echo "# pionic start" >> $@
 	echo "${LAN_IP}\\tpionic.server" >> $@
 	echo "# pionic end" >> $@
 endif
+endif
 
-# create pionic systemd service
+# pionic systemd service
 /lib/systemd/system/pionic.service:
 	rm -f $@
 ifdef INSTALL
@@ -133,10 +135,7 @@ ifdef INSTALL
 	echo 'Wants=network-online.target' >> $@
 	echo 'After=network-online.target' >> $@
 	echo '[Service]' >> $@
-	echo 'Type=forking' >> $@
-	echo 'PIDFile=/tmp/pionic/pid' >> $@
 	echo 'ExecStart=${PWD}/pionic.sh start $(if ${LAN_IP},,local)' >> $@
-	echo 'ExecStop=${PWD}/pionic.sh stop' >> $@
 	echo '[Install]' >> $@
 	echo 'WantedBy=multi-user.target' >> $@
 endif
@@ -154,7 +153,6 @@ ifndef HEADLESS
 	echo "hdmi_blanking=0" >> $@
 	echo "hdmi_ignore_edid=0x5a000080" >> $@
 	echo "gpu_mem=64" >> $@
-	echo "# avoid_warnings=1" >> $@
 	echo "overscan_left=-32" >> $@
 	echo "overscan_right=-32" >> $@
 	echo "overscan_top=-32" >> $@
