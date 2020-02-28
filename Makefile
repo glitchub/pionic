@@ -16,8 +16,8 @@ endif
 
 # Load the configuration file
 include pionic.cfg
-LAN_IP=$(strip ${LAN_IP})
-SERVER_IP=$(strip ${SERVER_IP})
+LAN_IP:=$(strip ${LAN_IP})
+SERVER_IP:=$(strip ${SERVER_IP})
 
 SPI:=$(strip ${SPI})
 I2C:=$(strip ${I2C})
