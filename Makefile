@@ -122,7 +122,7 @@ legacy:
 ifdef INSTALL
 ifdef LAN_IP
 	echo "# pionic start" >> $@
-	echo "${LAN_IP}\\tpionic.server" >> $@
+	echo "${LAN_IP} pionic.server" >> $@
 	echo "# pionic end" >> $@
 endif
 endif
