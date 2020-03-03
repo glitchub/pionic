@@ -20,12 +20,18 @@ mkdir -p $tmp
 # script is in pionic top level directory
 here=$(realpath ${0%/*})
 
+ipaddr() { ip -4 -o addr show $1 2>/dev/null | awk '{print $4; got=1} END{exit !got}' FS=' +|/'; }
+
 if [[ ${1:-} == local ]]; then
     station=local
     fixture=$here/default/fixture.sh
 else
-    ip=$(ip -4 -o addr show eth0 2>/dev/null | awk '{print $4}' FS=' +|/')
-    [[ $ip ]] || die "Requires an IP address on eth0"
+    tries=0
+    until ip=$(ipaddr eth0); do
+        ((tries++)) || echo "Waiting for an IP address on eth0"
+        sleep 1
+    done
+
     # get the last octet
     station=${ip##*.}
     echo "Requesting fixture for station ID $station"

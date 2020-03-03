@@ -170,7 +170,7 @@ clean:
 # Clean config files and remove packages and repos
 uninstall:
 	make INSTALL=
-	@for r in ${REPOS}; rm -rf $${r##*/}; done
+	@for r in ${REPOS}; do rm -rf $${r%% *}; done
 	${APT} remove --autoremove --purge -y ${PACKAGES}
 	if [ -d rasping ]; then make -C rasping uninstall && rm -rf rasping; fi
 	@echo "Uninstall complete"
