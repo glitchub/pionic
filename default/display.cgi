@@ -19,7 +19,6 @@ fg=white
 bg=black
 point=20
 align=nw
-font=mono
 wrap=
 
 if (($#)); then
@@ -34,10 +33,9 @@ if (($#)); then
             bg=?*)              bg=$arg ;;
             size=?*|point=?*)   point=$arg ;;
             align=?*)           align=$arg ;;
-            mono*)              font=mono ;;
-            prop*)              font=prop ;;
             badge)              point=80; align=c; font=prop ;;
             wrap)               wrap=-w ;;
+            mono*|prop*)        ;;
             *)                  die "Invalid option $o" ;;
         esac
     done
@@ -55,6 +53,9 @@ case $command in
         ;;
 
     text)
+        # Font with good Spanish and Chinese support
+        font=${0%/*}/WenQuanYiMicroHeiMono.ttf
+        [ -f $font ] || die "Need $font"
         $fbtext -c $fg:$bg -s $point -g $align -f $font $wrap -b1 -
         ;;
 
