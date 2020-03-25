@@ -23,48 +23,16 @@ env -i BASE=$BASE PATH=$PATH STATION=$STATION PIONIC=$PIONIC $cgiserver $BASE 80
 sleep 1
 pgrep -f cgiserver &>/dev/null || die "cgiserver did not start"
 
-# use if installed
-fbtext=$PIONIC/fbtools/fbtext
-evdump=$PIONIC/evdump/evdump
+trap 'x=$?;
+      set +eu;
+      echo "$0 exit $x";
+      kill $(jobs -p) &>/dev/null && wait $(jobs -p);
+      $PIONIC/fbtools/vtbind -b 1
+      exit $x' EXIT
 
-if [ -x $fbtext ]; then
-    trap 'x=$?;
-          set +eu;
-          echo "$0 exit $x";
-          kill $(jobs -p) &>/dev/null && wait $(jobs -p);
-          echo 1 > /sys/class/vtconsole/vtcon1/bind;
-          tput -T linux clear > /dev/tty1;
-          systemctl restart getty@tty1;
-          exit $x' EXIT
+$PIONIC/fbtools/vtbind -u 1
 
-    # detach console from framebuffer
-    echo 0 > /sys/class/vtconsole/vtcon1/bind
-
-    logo() { printf "TEST STATION $STATION READY" | $fbtext -cwhite:blue -gc -s40 -b1 -; }
-
-    if [[ -x $evdump && -e /dev/input/mouse0 ]]; then
-        echo "Starting logo loop"
-        # We have touch, show logo and refresh on two taps within one second
-        while true; do
-            logo
-            while true; do
-                read || die "evdump unexpected EOF"
-                read -t1 && break
-            done
-        done < <($evdump -t1 -c272 -v1 mouse0 2>/dev/null)
-    else
-        echo "Showing static logo"
-        logo
-        wait
-    fi
-else
-    # no frame buffer, just print message and wait
-    trap 'x=$?;
-          set +eu;
-          echo "$0 exit $x";
-          kill $(jobs -p) &>/dev/null && wait $(jobs -p);
-          exit $x' EXIT
-
-    echo "Test station $STATION ready"
-    wait
-fi
+# use logo image in the base directory if it exists
+image=$PIONIC/logo.jpg
+[ -f $image ] || unset image
+./logo ${image:+-i $image} TEST STATION $STATION READY
