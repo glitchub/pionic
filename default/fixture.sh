@@ -17,7 +17,7 @@ STATION=$2
 
 # point to fbtools, if they are installed
 fbtools=$PIONIC/fbtools
-[ -x $fbtools/fb.bin ] || fbtools=
+[ -f $fbtools/fb.bin ] || fbtools=
 
 cgiserver=$here/cgiserver
 [ -x $cgiserver ] || die "Need executable $cgiserver"
@@ -32,15 +32,18 @@ trap 'x=$?;
       set +eu;
       echo "$0 exit $x";
       kill $(jobs -p) &>/dev/null && wait $(jobs -p);
-      [[ -z $fbtools ]] || $PIONIC/fbtools/vtbind -b 1
+      [[ -z $fbtools ]] || $fbtools/vtbind -b 1
       exit $x' EXIT
 
 # take over the framebuffer, if we're using it
-[[ -z $fbtools ]] || $PIONIC/fbtools/vtbind -u 1
+[[ -z $fbtools ]] || $fbtools/vtbind -u 1
+
+# figure out what to say
+[[ $STATION == local ]] && label="TEST STATION READY" || label="TEST STATION $STATION READY"
 
 # use logo image in the base directory if it exists
 image=$PIONIC/logo.jpg
 [ -f $image ] || unset image
 
 # run the logo program, it shouldn't return
-PIONIC=$PIONIC $here/logo ${image:+-i $image} TEST STATION $STATION READY
+PIONIC=$PIONIC $here/logo ${image:+-i $image} $label
