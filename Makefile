@@ -93,7 +93,7 @@ repos: packages
 	done
 
 # install packages with apt
-packages:; ${APT} install -y ${PACKAGES}
+packages:; ${APT} install -y $(sort ${PACKAGES})
 
 else
 # clean or uninstall, returns to target below
@@ -115,6 +115,7 @@ endif
 .PHONY: legacy
 legacy:
 	sed -i '/pionic/d' /etc/rc.local
+	${APT} remove --autoremove --purge -y omxplayer
 
 # Add "pionic.server" hostname
 /etc/hosts:
@@ -171,7 +172,7 @@ clean:
 uninstall:
 	make INSTALL=
 	@for r in ${REPOS}; do rm -rf $${r%% *}; done
-	${APT} remove --autoremove --purge -y ${PACKAGES}
+	${APT} remove --autoremove --purge -y $(sort ${PACKAGES})
 	if [ -d rasping ]; then make -C rasping uninstall && rm -rf rasping; fi
 	@echo "Uninstall complete"
 

@@ -1,4 +1,4 @@
-#!/usr/bin/python
+#!/usr/bin/python3
 
 # Raspberry Pi GPIO control, expects one or more args in form:
 #
@@ -71,4 +71,4 @@ for i in sys.argv[1:]:
 
     raise Exception("Invalid gpio operation '"+i+"'")
 
-if states: print " ".join(map(lambda s:1 if s else 0,states))
+if states: print(" ".join(map(lambda s:1 if s else 0,states)))
