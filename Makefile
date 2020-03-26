@@ -115,6 +115,7 @@ endif
 .PHONY: legacy
 legacy:
 	sed -i '/pionic/d' /etc/rc.local
+	rm -r evdump
 	${APT} remove --autoremove --purge -y omxplayer
 
 # Add "pionic.server" hostname
