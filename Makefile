@@ -115,7 +115,7 @@ endif
 .PHONY: legacy
 legacy:
 	sed -i '/pionic/d' /etc/rc.local
-	rm -r evdump
+	rm -rf evdump
 	${APT} remove --autoremove --purge -y omxplayer
 
 # Add "pionic.server" hostname
@@ -138,7 +138,7 @@ ifdef INSTALL
 	echo 'Wants=network-online.target' >> $@
 	echo 'After=network-online.target' >> $@
 	echo '[Service]' >> $@
-	echo 'ExecStart=${CURDIR}/pionic.sh $(if ${LAN_IP},,local)' >> $@
+	echo 'ExecStart=${CURDIR}/pionic.sh $(if ${SERVER_IP},,local)' >> $@
 	echo '[Install]' >> $@
 	echo 'WantedBy=multi-user.target' >> $@
 endif
