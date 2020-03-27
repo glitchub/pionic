@@ -53,7 +53,7 @@ class cgihandler(CGIHTTPRequestHandler):
             self.send_error(403, "No such executable %r" % cmd)
             return
 
-        input = None
+        input = b""
         if self.command.lower() == "post":
             # slurp up post data
             try:
@@ -71,15 +71,14 @@ class cgihandler(CGIHTTPRequestHandler):
         argv = [cmd]+decode(args)
         self.log_message("Running %s", str(argv))
         env=os.environ
-        env['CONTENT_LENGTH']=str(0 if input is None else len(input))
+        env['CONTENT_LENGTH'] = str(len(input))
         p = subprocess.Popen(argv, stdin = subprocess.PIPE, stdout = subprocess.PIPE, stderr = subprocess.STDOUT, env=env)
         output = p.communicate(input)[0]
-        p.stdout.close()
         status = p.returncode
         if status:
             # propagate error as status 500
             last = '<no output>'
-            if output: last = ' '.join(output.strip().splitlines()[-1].split())
+            if output: last = ' '.join(output.decode('utf-8','ignore').strip().splitlines()[-1].split())
             self.log_error("%r exit %d: %s", cmd, status, last)
             self.send_response(500, "exit %d: %s" % (status, last))
         else:

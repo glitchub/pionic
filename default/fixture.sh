@@ -15,9 +15,9 @@ here=${0%/*}
 PIONIC=$1
 STATION=$2
 
-# point to fbtools, if they are installed
+# Point to fbtools, if they are installed
 fbtools=$PIONIC/fbtools
-[ -f $fbtools/fb.bin ] || fbtools=
+[[ -f $fbtools/fb.bin ]] || fbtools=
 
 cgiserver=$here/cgiserver
 [ -x $cgiserver ] || die "Need executable $cgiserver"
@@ -35,8 +35,10 @@ trap 'x=$?;
       [[ -z $fbtools ]] || $fbtools/vtbind -b 1
       exit $x' EXIT
 
-# take over the framebuffer, if we're using it
-[[ -z $fbtools ]] || $fbtools/vtbind -u 1
+if [[ $fbtools ]]; then
+    $fbtools/vtbind -u 1        # unbind vtcon1 from the framebuffer
+    $here/hdmi.cgi timeout=0    # show colorbars on hdmi
+fi
 
 # figure out what to say
 [[ $STATION == local ]] && label="TEST STATION READY" || label="TEST STATION $STATION READY"
