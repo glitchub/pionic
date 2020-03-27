@@ -12,8 +12,8 @@ die() { echo $@ >&2; exit 1; }
 here=${0%/*}
 
 (($#==2)) || die "Usage: $0 pionic_dir station_id"
-PIONIC=$1
-STATION=$2
+export PIONIC=$1
+export STATION=$2
 
 # Point to fbtools, if they are installed
 fbtools=$PIONIC/fbtools
@@ -48,4 +48,4 @@ image=$PIONIC/logo.jpg
 [ -f $image ] || unset image
 
 # run the logo program, it shouldn't return
-PIONIC=$PIONIC $here/logo ${image:+-i $image} $label
+$here/logo ${image:+-i $image} $label

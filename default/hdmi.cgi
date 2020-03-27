@@ -43,12 +43,15 @@ blob = gm.Blob();
 image.write(blob, "RGB", 8)
 
 if os.fork():
-    # parent, jwe're out of here
+    # parent, we're out of here
     print("OK")
 else:
-    # child, close all inherited file handle
-    for fd in os.listdir("/proc/self/fd"): os.close(int(fd))
+    # child, close inherited file handles
+    for fd in os.listdir("/proc/self/fd"):
+        try: os.close(int(fd))
+        except: pass
+
     # run dispmanx and pass rgb data to its stdin, it stays resident
-    dm = subprocess.Popen([dispmanx, "-t%d" % timeout, "-d%d" % number], stdin=subprocess.PIPE, stdout=None, stderr=None)
+    dm = subprocess.Popen([dispmanx, "-t%d" % timeout, "-d%d" % number], stdin=subprocess.PIPE)
     dm.stdin.write(blob.data)
     dm.stdin.close()
