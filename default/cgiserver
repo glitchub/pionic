@@ -58,9 +58,10 @@ class cgihandler(CGIHTTPRequestHandler):
         if self.command.lower() == "post":
             # slurp up post data
             try:
-                length = int(self.headers.getheader('content-length'))
+                length = int(self.headers.get('content-length'))
                 if length > 0: input = self.rfile.read(length)
-            except:
+            except Exception as e:
+                self.log_message(e)
                 self.send_error(403, "Invalid POST input")
 
         # flush other input
