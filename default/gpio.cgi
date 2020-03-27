@@ -1,4 +1,4 @@
-#!/usr/bin/python3
+#!/usr/bin/python3 -u
 
 # Raspberry Pi GPIO control, expects one or more args in form:
 #

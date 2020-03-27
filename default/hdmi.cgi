@@ -1,4 +1,4 @@
-#!/usr/bin/python3
+#!/usr/bin/python3 -u
 # write image to hdmi via dispmanx
 
 import os, sys, subprocess, pgmagick as gm

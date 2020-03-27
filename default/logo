@@ -1,4 +1,6 @@
-#!/usr/bin/python3
+#!/usr/bin/python3 -u
+# Note unbuffered output for journald
+
 import sys, os, select, getopt
 
 # find font in same directory as this script
