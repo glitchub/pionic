@@ -1,10 +1,9 @@
-#!/usr/bin/env python
+#!/usr/bin/python3
 
 # A tiny CGI server
-
-from BaseHTTPServer import HTTPServer
-from CGIHTTPServer import CGIHTTPRequestHandler
-from SocketServer import ForkingMixIn
+from http.server import HTTPServer
+from http.server import CGIHTTPRequestHandler
+from socketserver import ForkingMixIn
 import sys, os, subprocess, select, string
 
 # Given an url argument string with '+' and '%XX' escapes, and multiple
@@ -23,7 +22,7 @@ def decode(url):
         # join the unescaped fields, delete extra whitespace
         args.append(' '.join(''.join(fields).split()))
     # return non-null args
-    return filter(len, args)
+    return [a for a in args if len(a)]
 
 class cgihandler(CGIHTTPRequestHandler):
     # Force all requests through run_cgi
