@@ -27,25 +27,21 @@ cgiserver=$here/cgiserver
 [ -x $cgiserver ] || die "Need executable $cgiserver"
 
 (
-    # XXX this should probably turn into a systemd service
-    # Start the cgi server, if it exits within 2 seconds three times in a row then kamikaze
+    # Start the cgi server, if it exits within 2 seconds four times in a row then kamikaze
     pkill -f cgiserver &>/dev/null || true
     tries=0
     while true; do
         started=$SECONDS
         echo "CGI server started at T$SECONDS"
-        env -i PATH=$PATH STATION=$STATION PIONIC=$PIONIC $cgiserver $here 80
+        env -i PATH=$PATH STATION=$STATION PIONIC=$PIONIC $cgiserver $here 80 || true
         stopped=$SECONDS
         echo "CGI server stopped at T$SECONDS"
-        if ((stopped-started < 2)); then
-            if ((++tries > 3)); then
-                echo "CGI server is borked, killing parent"
-                kill $$ # we have parent's pid!
-            fi
-            echo "CGI server retry $tries"
-        else
-            tries=0
+        ((stopped-started <= 2)) || tries=0
+        if ((++tries >= 4)); then
+            echo "CGI server is borked, kamikaze"
+            while true; do kill $$; done # the parent pid!
         fi
+        echo "CGI server retry $tries"
     done
 ) &
 
@@ -62,8 +58,8 @@ trap 'x=$?;
 # figure out what to say
 [[ $STATION == local ]] && label="TEST STATION READY" || label="TEST STATION $STATION READY"
 
-# show logo.jpg in pi home directory if it exists
-image=~/logo.jpg
+# show logo.img in pi home directory if it exists
+image=~pi/logo.img
 [ -f $image ] || unset image
 
 # run the logo program, it shouldn't return
