@@ -42,10 +42,7 @@ image.resize("!"+resolution)
 blob = gm.Blob();
 image.write(blob, "RGB", 8)
 
-if os.fork():
-    # parent, we're out of here
-    print("OK")
-else:
+if not os.fork():
     # child, close inherited file handles
     for fd in os.listdir("/proc/self/fd"):
         try: os.close(int(fd))

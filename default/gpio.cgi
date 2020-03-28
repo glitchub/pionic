@@ -71,4 +71,4 @@ for i in sys.argv[1:]:
 
     raise Exception("Invalid gpio operation '"+i+"'")
 
-if states: print(" ".join(map(lambda s:1 if s else 0,states)))
+if states: print(" ".join(["1" if s else "0" for s in states]))

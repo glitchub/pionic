@@ -85,7 +85,11 @@ if not input:
     stop()
 
 print("Starting logo loop")
+
 while True:
-    input.touch()
-    screen.display()
-    input.release()
+    # rewrite display if two touches within one second
+    if input.touch():
+        input.release()
+        if input.touch(timeout=1):
+            screen.display()
+            input.release()

@@ -15,37 +15,56 @@ here=${0%/*}
 export PIONIC=$1
 export STATION=$2
 
-# Point to fbtools, if they are installed
-fbtools=$PIONIC/fbtools
-[[ -f $fbtools/fb.bin ]] || fbtools=
+echo PIONIC=$PIONIC, STATION=$STATION
+
+vtbind=$PIONIC/fbtools/vtbind
+[[ -x $vtbind ]] || vtbind=
+
+dispmanx=$PIONIC/dispmanx/dispmanx
+[[ -x $dispmanx ]] || dispmanx=
 
 cgiserver=$here/cgiserver
 [ -x $cgiserver ] || die "Need executable $cgiserver"
 
-echo "Starting CGI server on station $STATION"
-pkill -f cgiserver &>/dev/null || true
-env -i PATH=$PATH STATION=$STATION PIONIC=$PIONIC $cgiserver $here 80 2>&1 &
-sleep .5
-pgrep -f cgiserver &>/dev/null || die "cgiserver did not start"
+(
+    # XXX this should probably turn into a systemd service
+    # Start the cgi server, if it exits within 2 seconds three times in a row then kamikaze
+    pkill -f cgiserver &>/dev/null || true
+    tries=0
+    while true; do
+        started=$SECONDS
+        echo "CGI server started at T$SECONDS"
+        env -i PATH=$PATH STATION=$STATION PIONIC=$PIONIC $cgiserver $here 80
+        stopped=$SECONDS
+        echo "CGI server stopped at T$SECONDS"
+        if ((stopped-started < 2)); then
+            if ((++tries > 3)); then
+                echo "CGI server is borked, killing parent"
+                kill $$ # we have parent's pid!
+            fi
+            echo "CGI server retry $tries"
+        else
+            tries=0
+        fi
+    done
+) &
 
 trap 'x=$?;
       set +eu;
       echo "$0 exit $x";
       kill $(jobs -p) &>/dev/null && wait $(jobs -p);
-      [[ -z $fbtools ]] || $fbtools/vtbind -b 1
+      [[ -z $vtbind ]] || $vtbind -b 1
       exit $x' EXIT
 
-if [[ $fbtools ]]; then
-    $fbtools/vtbind -u 1        # unbind vtcon1 from the framebuffer
-    $here/hdmi.cgi timeout=0    # show colorbars on hdmi
-fi
+[[ -z $vtbind ]] || $vtbind -u 1                # unbind vtcon1 from the framebuffer
+[[ -z $dispmanx ]] || $here/hdmi.cgi timeout=0  # show colorbars on hdmi
 
 # figure out what to say
 [[ $STATION == local ]] && label="TEST STATION READY" || label="TEST STATION $STATION READY"
 
-# use logo image in the base directory if it exists
-image=$PIONIC/logo.jpg
+# show logo.jpg in pi home directory if it exists
+image=~/logo.jpg
 [ -f $image ] || unset image
 
 # run the logo program, it shouldn't return
-$here/logo ${image:+-i $image} $label
+$here/logo ${image:+-i$image} $label
