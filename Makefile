@@ -117,6 +117,7 @@ legacy:
 	sed -i '/pionic/d' /etc/rc.local
 	rm -rf evdump
 	${APT} remove --autoremove --purge -y omxplayer
+	${APT} remove --autoremove --purge -y pgmagick
 
 # Add "pionic.server" hostname
 /etc/hosts:
