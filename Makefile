@@ -73,7 +73,7 @@ endif
 	@echo "Reboot to start pionic"
 
 # files depend on repos
-.PHONY: ${FILES}
+.PHONY: ${FILES} s
 files: ${FILES} legacy
 ${FILES}: repos
 
@@ -173,7 +173,11 @@ clean:
 # Clean config files and remove packages and repos
 uninstall:
 	make INSTALL=
-	@for r in ${REPOS}; do rm -rf $${r%% *}; done
+	echo ${REPOS}
+	@for r in ${REPOS}; do \
+	    read repo build < <(echo $$r); \
+	    rm -rf $${repo##*/}; \
+	done
 	${APT} remove --autoremove --purge -y $(sort ${PACKAGES})
 	if [ -d rasping ]; then make -C rasping uninstall && rm -rf rasping; fi
 	@echo "Uninstall complete"
