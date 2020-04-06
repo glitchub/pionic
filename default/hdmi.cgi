@@ -1,7 +1,7 @@
 #!/usr/bin/python3 -u
 # write image to hdmi via dispmanx
 
-import os, sys, subprocess, pgmagick as gm
+import os, sys, subprocess, PIL.Image as Image
 
 # directory containing this file should also contain colorbars.jpg
 here = os.path.dirname(__file__)
@@ -32,15 +32,14 @@ if number is None: raise Exception("Can't find %s display" % display)
 
 resolution=subprocess.check_output([dispmanx, "-rd%d" % number]).decode("ascii")
 if not resolution: raise Exception("Can't get dispmanx resolution for device %d" % number)
+resolution = [int(n) for n in resolution.split("x")]
 
 if int(os.environ.get("CONTENT_LENGTH",0)):
-    image = gm.Image(gm.Blob(sys.stdin.buffer.read()))
+    image = Image.open(sys.stdin.buffer)
 else:
-    image = gm.Image(here+"/colorbars.jpg")
+    image = Image.open(here+"/colorbars.jpg")
 
-image.resize("!"+resolution)
-blob = gm.Blob();
-image.write(blob, "RGB", 8)
+image = image.resize(resolution).convert("RGB")
 
 if not os.fork():
     # child, close inherited file handles
@@ -50,5 +49,5 @@ if not os.fork():
 
     # run dispmanx and pass rgb data to its stdin, it stays resident
     dm = subprocess.Popen([dispmanx, "-t%d" % timeout, "-d%d" % number], stdin=subprocess.PIPE)
-    dm.stdin.write(blob.data)
+    dm.stdin.write(image.tobytes())
     dm.stdin.close()
