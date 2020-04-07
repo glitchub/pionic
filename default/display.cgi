@@ -17,10 +17,10 @@ fbtext=$PIONIC/fbtools/fbtext
 command=clear
 fg=white
 bg=black
-point=20
+point=
+size=60
 align=nw
 wrap=0
-
 
 if (($#)); then
     command=$1
@@ -32,8 +32,9 @@ if (($#)); then
         case $o in
             fg=?*)              fg=$arg ;;
             bg=?*)              bg=$arg ;;
-            badge)              point="<80"; align="c"; wrap=1 ;;
-            size=?*|point=?*)   point=$arg ;;
+            badge)              size=">20"; align="c"; wrap=1 ;;
+            size=?*)            size="$arg" ;;
+            point=?*)           size="=$arg" ;; # deprecated
             align=?*)           align=$arg ;;
             wrap)               wrap=1 ;;
             mono*|prop*)        ;;
@@ -56,8 +57,7 @@ case $command in
     text)
         # A font with good Spanish and Chinese support
         font=${0%/*}/WenQuanYiMicroHeiMono.ttf
-        style=
-        [[ $point ]] && style+=$point
+        style=$size
         [[ $align ]] && style+="@$align"
         (( wrap )) && style+="#"
         $fbtext -c $fg:$bg -f $font -s $style -b1 -
