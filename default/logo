@@ -19,17 +19,19 @@ Options are:
     -c [fg:]bg              - foreground and background colors, default is "white:blue"
     -i file                 - image to display to left of message
     -m width                - margin width, default is 30
+    -w percent              - image width % of screen, default is 20
 """
 
 border=1
 image=None
 fg="white"
 bg="blue"
-margin=10
+margin=30
+width=.2
 
 try:
 
-    opts, args = getopt.getopt(sys.argv[1:],"b:c:i:m:")
+    opts, args = getopt.getopt(sys.argv[1:],"b:c:i:m:w:")
     if not args: raise Exception("Must specify a message")
 
     for opt, arg in opts:
@@ -37,6 +39,7 @@ try:
         elif opt == "-c": fg, bg = (i or None for i in ([None]+arg.split(':'))[-2:])
         elif opt == "-i": image = arg
         elif opt == "-m": margin = int(arg)
+        elif opt == "-w": width = int(arg)/100
 
 except Exception as e:
     print (str(e), usage, file=sys.stderr)
@@ -66,8 +69,8 @@ if margin:
 else:
     inner=screen
 if image:
-    div=int(inner.width*.33)
-    # logo on left third, text on right two-thirds
+    div=int(inner.width*width)
+    # logo on left, text on right
     inner.child(right=div).image(image)
     inner.child(left=div+margin).text(message)
 else:
