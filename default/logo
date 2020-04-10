@@ -58,8 +58,8 @@ if not os.path.isdir(fbtools):
 sys.path.insert(0, fbtools)
 import fbscreen, touch
 
-# create the screen, text wrapped to 30 columns
-screen=fbscreen.Screen(fg=fg, bg=bg, font=font, style="!30@c", border=border)
+# create the screen
+screen=fbscreen.Screen(fg=fg, bg=bg, font=font, border=border)
 margin += border
 if margin:
     inner=screen.child(left=margin, top=margin, right=-margin, bottom=-margin)

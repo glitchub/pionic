@@ -32,7 +32,7 @@ if (($#)); then
         case $o in
             fg=?*)              fg=$arg ;;
             bg=?*)              bg=$arg ;;
-            badge)              size=">20"; align="c"; wrap=1 ;;
+            badge)              size="24"; align="c"; wrap=1 ;;
             size=?*)            size="$arg" ;;
             point=?*)           size="=$arg" ;; # deprecated
             align=?*)           align=$arg ;;
@@ -59,7 +59,7 @@ case $command in
         font=${0%/*}/WenQuanYiMicroHeiMono.ttf
         style=$size
         [[ $align ]] && style+="@$align"
-        (( wrap )) && style+="#"
+        (( wrap )) || style+="/"
         $fbtext -c $fg:$bg -f $font -s $style -b1 -
         ;;
 
