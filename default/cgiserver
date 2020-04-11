@@ -1,10 +1,10 @@
-#!/usr/bin/env python
+#!/usr/bin/python3 -u
+# Note unbuffered output for journald
 
 # A tiny CGI server
-
-from BaseHTTPServer import HTTPServer
-from CGIHTTPServer import CGIHTTPRequestHandler
-from SocketServer import ForkingMixIn
+from http.server import HTTPServer
+from http.server import CGIHTTPRequestHandler
+from socketserver import ForkingMixIn
 import sys, os, subprocess, select, string
 
 # Given an url argument string with '+' and '%XX' escapes, and multiple
@@ -23,7 +23,7 @@ def decode(url):
         # join the unescaped fields, delete extra whitespace
         args.append(' '.join(''.join(fields).split()))
     # return non-null args
-    return filter(len, args)
+    return [a for a in args if len(a)]
 
 class cgihandler(CGIHTTPRequestHandler):
     # Force all requests through run_cgi
@@ -54,13 +54,14 @@ class cgihandler(CGIHTTPRequestHandler):
             self.send_error(403, "No such executable %r" % cmd)
             return
 
-        input = None
+        input = b""
         if self.command.lower() == "post":
             # slurp up post data
             try:
-                length = int(self.headers.getheader('content-length'))
+                length = int(self.headers.get('content-length'))
                 if length > 0: input = self.rfile.read(length)
-            except:
+            except Exception as e:
+                self.log_message(e)
                 self.send_error(403, "Invalid POST input")
 
         # flush other input
@@ -72,15 +73,14 @@ class cgihandler(CGIHTTPRequestHandler):
         argv = [cmd]+decode(args)
         self.log_message("Running %s", str(argv))
         env=os.environ
-        env['CONTENT_LENGTH']=str(0 if input is None else len(input))
+        env['CONTENT_LENGTH'] = str(len(input))
         p = subprocess.Popen(argv, stdin = subprocess.PIPE, stdout = subprocess.PIPE, stderr = subprocess.STDOUT, env=env)
         output = p.communicate(input)[0]
-        p.stdout.close()
         status = p.returncode
         if status:
             # propagate error as status 500
             last = '<no output>'
-            if output: last = ' '.join(output.strip().splitlines()[-1].split())
+            if output: last = ' '.join(output.decode('utf-8','ignore').strip().splitlines()[-1].split())
             self.log_error("%r exit %d: %s", cmd, status, last)
             self.send_response(500, "exit %d: %s" % (status, last))
         else:

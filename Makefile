@@ -23,6 +23,7 @@ SERVER_IP:=$(strip ${SERVER_IP})
 SPI:=$(strip ${SPI})
 I2C:=$(strip ${I2C})
 PRODUCTION:=$(strip ${PRODUCTION})
+HDMI_MODE:=${HDMI_MODE}
 
 ifdef LAN_IP
 # Install rasping if LAN_IP is enabled, these are the parameters it requires
@@ -47,10 +48,11 @@ FILES=/lib/systemd/system/pionic.service /boot/config.txt /etc/hosts
 # function to invoke raspi-config in non-interactive mode, "on" enables, any other disables
 raspi-config=raspi-config nonint $1 $(if $(filter on,$2),0,1)
 
-# function to invoke apt
-APT=DEBIAN_FRONTEND=noninteractive apt
+# functions to invoke apt
+APT-INSTALL=DEBIAN_FRONTEND=noninteractive apt install -y
+APT-REMOVE=DEBIAN_FRONTEND=noninteractive apt remove --autoremove --purge -y
 
-.PHONY: default clean packages repos files
+.PHONY: default clean packages repos files ${FILES}
 
 ifdef INSTALL
 default: files
@@ -73,7 +75,6 @@ endif
 	@echo "Reboot to start pionic"
 
 # files depend on repos
-.PHONY: ${FILES}
 files: ${FILES} legacy
 ${FILES}: repos
 
@@ -93,7 +94,7 @@ repos: packages
 	done
 
 # install packages with apt
-packages:; ${APT} install -y ${PACKAGES}
+packages:; ${APT-INSTALL} $(sort ${PACKAGES})
 
 else
 # clean or uninstall, returns to target below
@@ -115,6 +116,8 @@ endif
 .PHONY: legacy
 legacy:
 	sed -i '/pionic/d' /etc/rc.local
+	rm -rf evdump
+	-${APT-REMOVE} omxplayer python3-pgmagick
 
 # Add "pionic.server" hostname
 /etc/hosts:
@@ -136,7 +139,7 @@ ifdef INSTALL
 	echo 'Wants=network-online.target' >> $@
 	echo 'After=network-online.target' >> $@
 	echo '[Service]' >> $@
-	echo 'ExecStart=${CURDIR}/pionic.sh $(if ${LAN_IP},,local)' >> $@
+	echo 'ExecStart=${CURDIR}/pionic.sh $(if ${SERVER_IP},,local)' >> $@
 	echo '[Install]' >> $@
 	echo 'WantedBy=multi-user.target' >> $@
 endif
@@ -145,34 +148,36 @@ endif
 /boot/config.txt:
 	sed -i '/pionic start/,/pionic end/d' $@
 ifdef INSTALL
-ifndef HEADLESS
+ifdef HDMI_MODE
 	echo "# pionic start" >> $@
 	echo "[all]" >> $@
 	echo "hdmi_force_hotplug=1" >> $@
 	echo "hdmi_group=1" >> $@
-	echo "hdmi_mode=16 # 1920x1080" >> $@
+	echo "hdmi_mode=${HDMI_MODE}" >> $@
 	echo "hdmi_blanking=0" >> $@
 	echo "hdmi_ignore_edid=0x5a000080" >> $@
-	echo "gpu_mem=64" >> $@
-	echo "overscan_left=-32" >> $@
-	echo "overscan_right=-32" >> $@
-	echo "overscan_top=-32" >> $@
-	echo "overscan_bottom=-32" >> $@
 	echo "# pionic end" >> $@
 endif
 endif
 
 # Clean config files but don't remove packages or repos
 clean:
+	-systemctl stop pionic
 	make INSTALL=
+	sync
 	@echo "Clean complete"
 
 # Clean config files and remove packages and repos
 uninstall:
+	-systemctl stop pionic
 	make INSTALL=
-	@for r in ${REPOS}; do rm -rf $${r%% *}; done
-	${APT} remove --autoremove --purge -y ${PACKAGES}
+	@for r in ${REPOS}; do \
+	    read repo build < <(echo $$r); \
+	    rm -rf $${repo##*/}; \
+	done
+	${APT-REMOVE} $(sort ${PACKAGES})
 	if [ -d rasping ]; then make -C rasping uninstall && rm -rf rasping; fi
+	sync
 	@echo "Uninstall complete"
 
 endif

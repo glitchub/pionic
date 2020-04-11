@@ -1,0 +1,98 @@
+#!/usr/bin/python3 -u
+# Note unbuffered output for journald
+
+import sys, os, select, getopt
+
+# find font in same directory as this script
+font=os.path.dirname(__file__)+"/WenQuanYiMicroHeiMono.ttf"
+
+usage = """\
+Usage:
+
+    logo [options] "Message text"
+
+Display message with option image. If a touch screen is connected, refresh whenever the screen is touched.
+
+Options are:
+
+    -b width                - screen border width, default is 1
+    -c [fg:]bg              - foreground and background colors, default is "white:blue"
+    -i file                 - image to display to left of message
+    -m width                - margin width, default is 30
+    -w percent              - image width % of screen, default is 20
+"""
+
+border=1
+image=None
+fg="white"
+bg="blue"
+margin=30
+width=.2
+
+try:
+
+    opts, args = getopt.getopt(sys.argv[1:],"b:c:i:m:w:")
+    if not args: raise Exception("Must specify a message")
+
+    for opt, arg in opts:
+        if   opt == "-b": border = int(arg)
+        elif opt == "-c": fg, bg = (i or None for i in ([None]+arg.split(':'))[-2:])
+        elif opt == "-i": image = arg
+        elif opt == "-m": margin = int(arg)
+        elif opt == "-w": width = int(arg)/100
+
+except Exception as e:
+    print (str(e), usage, file=sys.stderr)
+    quit(1)
+
+message = " ".join(args)
+
+# wait forever
+def stop(): select.select([],[],[])
+
+# if fbtools is not installed then just print the message and stop
+if "PIONIC" not in os.environ: raise Exception("Expected PIONIC environment variable")
+fbtools=os.environ["PIONIC"]+"/fbtools"
+if not os.path.isdir(fbtools):
+    print(message)
+    stop()
+
+# import modules from fbtools
+sys.path.insert(0, fbtools)
+import fbscreen, touch
+
+# create the screen
+screen=fbscreen.Screen(fg=fg, bg=bg, font=font, border=border)
+margin += border
+if margin:
+    inner=screen.child(left=margin, top=margin, right=-margin, bottom=-margin)
+else:
+    inner=screen
+if image:
+    div=int(inner.width*width)
+    # logo on left, text on right
+    inner.child(right=div).image(image)
+    inner.child(left=div+margin).text(message)
+else:
+    inner.text(message)
+
+screen.display()
+
+try:
+    input = touch.Touch()
+except:
+    input = None
+
+if not input:
+    print("Showing static logo")
+    stop()
+
+print("Starting logo loop")
+
+while True:
+    # rewrite display if two touches within one second
+    if input.touch():
+        input.release()
+        if input.touch(timeout=1):
+            screen.display()
+            input.release()

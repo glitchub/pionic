@@ -1,6 +1,6 @@
 #!/bin/bash -eu
 
-# Default fixture is no fixture at all, just start cgiserver and watch for display touch
+# Default fixture is no fixture at all, just start cgiserver and show the logo
 
 echo "Default fixture driver"
 
@@ -8,63 +8,59 @@ die() { echo $@ >&2; exit 1; }
 
 ((!UID)) || die "Must be root!"
 
+# directory containing this script
+here=${0%/*}
+
 (($#==2)) || die "Usage: $0 pionic_dir station_id"
+export PIONIC=$1
+export STATION=$2
 
-PIONIC=$1
-STATION=$2
-BASE=$(realpath ${0%/*})
+echo PIONIC=$PIONIC, STATION=$STATION
 
-cgiserver=$BASE/cgiserver
+vtbind=$PIONIC/fbtools/vtbind
+[[ -x $vtbind ]] || vtbind=
+
+dispmanx=$PIONIC/dispmanx/dispmanx
+[[ -x $dispmanx ]] || dispmanx=
+
+cgiserver=$here/cgiserver
 [ -x $cgiserver ] || die "Need executable $cgiserver"
 
-echo "Starting CGI server on station $STATION"
-pkill -f cgiserver &>/dev/null || true
-env -i BASE=$BASE PATH=$PATH STATION=$STATION PIONIC=$PIONIC $cgiserver $BASE 80 2>&1 &
-sleep 1
-pgrep -f cgiserver &>/dev/null || die "cgiserver did not start"
+(
+    # Start the cgi server, if it exits within 2 seconds four times in a row then kamikaze
+    pkill -f cgiserver &>/dev/null || true
+    tries=0
+    while true; do
+        started=$SECONDS
+        echo "CGI server started at T$SECONDS"
+        env -i PATH=$PATH STATION=$STATION PIONIC=$PIONIC $cgiserver $here 80 || true
+        stopped=$SECONDS
+        echo "CGI server stopped at T$SECONDS"
+        ((stopped-started <= 2)) || tries=0
+        if ((++tries >= 4)); then
+            echo "CGI server is borked, kamikaze"
+            while true; do kill $$; done # the parent pid!
+        fi
+        echo "CGI server retry $tries"
+    done
+) &
 
-# use if installed
-fbtext=$PIONIC/fbtools/fbtext
-evdump=$PIONIC/evdump/evdump
+trap 'x=$?;
+      set +eu;
+      echo "$0 exit $x";
+      kill $(jobs -p) &>/dev/null && wait $(jobs -p);
+      [[ -z $vtbind ]] || $vtbind -b 1
+      exit $x' EXIT
 
-if [ -x $fbtext ]; then
-    trap 'x=$?;
-          set +eu;
-          echo "$0 exit $x";
-          kill $(jobs -p) &>/dev/null && wait $(jobs -p);
-          echo 1 > /sys/class/vtconsole/vtcon1/bind;
-          tput -T linux clear > /dev/tty1;
-          systemctl restart getty@tty1;
-          exit $x' EXIT
+[[ -z $vtbind ]] || $vtbind -u 1                # unbind vtcon1 from the framebuffer
+[[ -z $dispmanx ]] || $here/hdmi.cgi timeout=0  # show colorbars on hdmi
 
-    # detach console from framebuffer
-    echo 0 > /sys/class/vtconsole/vtcon1/bind
+# figure out what to say
+[[ $STATION == local ]] && label="TEST STATION READY" || label="TEST STATION $STATION READY"
 
-    logo() { printf "TEST STATION $STATION READY" | $fbtext -cwhite:blue -gc -s40 -b1 -; }
+# show logo.img in pi home directory if it exists
+image=~pi/logo.img
+[ -f $image ] || unset image
 
-    if [[ -x $evdump && -e /dev/input/mouse0 ]]; then
-        echo "Starting logo loop"
-        # We have touch, show logo and refresh on two taps within one second
-        while true; do
-            logo
-            while true; do
-                read || die "evdump unexpected EOF"
-                read -t1 && break
-            done
-        done < <($evdump -t1 -c272 -v1 mouse0 2>/dev/null)
-    else
-        echo "Showing static logo"
-        logo
-        wait
-    fi
-else
-    # no frame buffer, just print message and wait
-    trap 'x=$?;
-          set +eu;
-          echo "$0 exit $x";
-          kill $(jobs -p) &>/dev/null && wait $(jobs -p);
-          exit $x' EXIT
-
-    echo "Test station $STATION ready"
-    wait
-fi
+# run the logo program, it shouldn't return
+$here/logo ${image:+-i$image} $label
