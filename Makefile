@@ -52,7 +52,7 @@ raspi-config=raspi-config nonint $1 $(if $(filter on,$2),0,1)
 APT-INSTALL=DEBIAN_FRONTEND=noninteractive apt install -y
 APT-REMOVE=DEBIAN_FRONTEND=noninteractive apt remove --autoremove --purge -y
 
-.PHONY: default clean packages repos files
+.PHONY: default clean packages repos files ${FILES}
 
 ifdef INSTALL
 default: files
@@ -75,7 +75,6 @@ endif
 	@echo "Reboot to start pionic"
 
 # files depend on repos
-.PHONY: ${FILES} s
 files: ${FILES} legacy
 ${FILES}: repos
 
