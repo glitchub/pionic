@@ -165,6 +165,7 @@ endif
 clean:
 	-systemctl stop pionic
 	make INSTALL=
+	sync
 	@echo "Clean complete"
 
 # Clean config files and remove packages and repos
@@ -177,6 +178,7 @@ uninstall:
 	done
 	${APT} remove --autoremove --purge -y $(sort ${PACKAGES})
 	if [ -d rasping ]; then make -C rasping uninstall && rm -rf rasping; fi
+	sync
 	@echo "Uninstall complete"
 
 endif
