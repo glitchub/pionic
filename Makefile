@@ -171,7 +171,6 @@ clean:
 uninstall:
 	-systemctl stop pionic
 	make INSTALL=
-	echo ${REPOS}
 	@for r in ${REPOS}; do \
 	    read repo build < <(echo $$r); \
 	    rm -rf $${repo##*/}; \
