@@ -156,11 +156,6 @@ ifndef HEADLESS
 	echo "hdmi_mode=16 # 1920x1080" >> $@
 	echo "hdmi_blanking=0" >> $@
 	echo "hdmi_ignore_edid=0x5a000080" >> $@
-	echo "gpu_mem=64" >> $@
-	echo "overscan_left=-32" >> $@
-	echo "overscan_right=-32" >> $@
-	echo "overscan_top=-32" >> $@
-	echo "overscan_bottom=-32" >> $@
 	echo "# pionic end" >> $@
 endif
 endif
