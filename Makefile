@@ -48,8 +48,9 @@ FILES=/lib/systemd/system/pionic.service /boot/config.txt /etc/hosts
 # function to invoke raspi-config in non-interactive mode, "on" enables, any other disables
 raspi-config=raspi-config nonint $1 $(if $(filter on,$2),0,1)
 
-# function to invoke apt
-APT=DEBIAN_FRONTEND=noninteractive apt
+# functions to invoke apt
+APT-INSTALL=DEBIAN_FRONTEND=noninteractive apt install -y
+APT-REMOVE=DEBIAN_FRONTEND=noninteractive apt remove --autoremove --purge -y
 
 .PHONY: default clean packages repos files
 
@@ -94,7 +95,7 @@ repos: packages
 	done
 
 # install packages with apt
-packages:; ${APT} install -y $(sort ${PACKAGES})
+packages:; ${APT-INSTALL} $(sort ${PACKAGES})
 
 else
 # clean or uninstall, returns to target below
@@ -117,8 +118,7 @@ endif
 legacy:
 	sed -i '/pionic/d' /etc/rc.local
 	rm -rf evdump
-	-${APT} remove --autoremove --purge -y omxplayer
-	-${APT} remove --autoremove --purge -y python3-pgmagick
+	-${APT-REMOVE} omxplayer python3-pgmagick
 
 # Add "pionic.server" hostname
 /etc/hosts:
@@ -176,7 +176,7 @@ uninstall:
 	    read repo build < <(echo $$r); \
 	    rm -rf $${repo##*/}; \
 	done
-	${APT} remove --autoremove --purge -y $(sort ${PACKAGES})
+	${APT-REMOVE} $(sort ${PACKAGES})
 	if [ -d rasping ]; then make -C rasping uninstall && rm -rf rasping; fi
 	sync
 	@echo "Uninstall complete"
