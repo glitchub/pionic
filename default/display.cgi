@@ -18,7 +18,7 @@ command=clear
 fg=white
 bg=black
 point=
-size=60
+size=42
 align=nw
 wrap=0
 
@@ -32,7 +32,7 @@ if (($#)); then
         case $o in
             fg=?*)              fg=$arg ;;
             bg=?*)              bg=$arg ;;
-            badge)              size="24"; align="c"; wrap=1 ;;
+            badge)              size="25"; align="c"; wrap=1 ;;
             size=?*)            size="$arg" ;;
             point=?*)           size="=$arg" ;; # deprecated
             align=?*)           align=$arg ;;
