@@ -162,11 +162,13 @@ endif
 
 # Clean config files but don't remove packages or repos
 clean:
+	-systemctl stop pionic
 	make INSTALL=
 	@echo "Clean complete"
 
 # Clean config files and remove packages and repos
 uninstall:
+	-systemctl stop pionic
 	make INSTALL=
 	echo ${REPOS}
 	@for r in ${REPOS}; do \
