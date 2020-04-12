@@ -23,7 +23,8 @@ SERVER_IP:=$(strip ${SERVER_IP})
 SPI:=$(strip ${SPI})
 I2C:=$(strip ${I2C})
 PRODUCTION:=$(strip ${PRODUCTION})
-HDMI_MODE:=${HDMI_MODE}
+HDMI_GROUP:=$(strip ${HDMI_GROUP})
+HDMI_MODE:=$(strip ${HDMI_MODE})
 
 ifdef LAN_IP
 # Install rasping if LAN_IP is enabled, these are the parameters it requires
@@ -152,10 +153,10 @@ ifdef HDMI_MODE
 	echo "# pionic start" >> $@
 	echo "[all]" >> $@
 	echo "hdmi_force_hotplug=1" >> $@
-	echo "hdmi_group=1" >> $@
-	echo "hdmi_mode=${HDMI_MODE}" >> $@
 	echo "hdmi_blanking=0" >> $@
 	echo "hdmi_ignore_edid=0x5a000080" >> $@
+	echo "hdmi_group=${HDMI_GROUP}" >> $@
+	echo "hdmi_mode=${HDMI_MODE}" >> $@
 	echo "# pionic end" >> $@
 endif
 endif

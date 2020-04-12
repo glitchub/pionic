@@ -5,13 +5,14 @@ general form:
 
     http://ip.ad.re.ss/cginame[?options[&...options]]
 
-The cgi file name must end with .cgi.
+This URL executes the file "cginame.cgi" with the options passed on the command
+line.
 
 These CGIs are defined:
 
 test
 
-    Just returns the current CGI environment. There are no options.
+    Just returns the current CGI environment.
 
     Example:
 
@@ -35,29 +36,26 @@ display
 
         fg=color    - define foreground color text, default white.
         bg=color    - define background color for clear, image, or text,
-                      default black.
-        size=N      - pointsize for text, default 20 (note one point per pixel)
+                      default "black". Note if "transparent" text will overlay
+                      existing display.
+        size=N      - number of visible text columns, default is 42.
         align=dir   - screen text alignment, one of: nw, n, ne, w, c, e, sw, s,
                       or se. Default "nw".
-        mono        - use monospaced font (the default)
-        prop        - use proportional font
-        badge       - short for "size=80 align=c prop"
-        overlay     - ignore bg color, use the existing framebuffer contents as
-                      the background. I.E. superimpose new text.
-        status      - short for "overlay,align=sw"
+        badge       - short for "size=24 align=c wrap=1"
+        wrap        - set to 1 to automatically wrap text to specified size. Default 0.
 
     Example:
 
         # Show arbitrary text
-        $ cat file.txt | curl --data-binary @- -qf 'https://192.168.111.1/display?text'
+        $ cat file.txt | curl --data-binary @- -qf 'https://192.168.111.1/display?text&wrap=1'
 
         # show a status message
-        $ echo TEST PASS | curl --data-binary @- -qf 'https://192.168.111.1/display?text&bg=white&fg=green&size=40&align=center'
+        $ echo TEST PASS | curl --data-binary @- -qf 'https://192.168.111.1/display?badge&bg=white&fg=green'
 
-        # Show a PNG image
+        # Show an arbitrary image
         $ curl --binary-data @image.png -qf 'https://192.168.111.1/display?image&bg=white'
 
-        # Show colorbars
+        # Show stock colorbars
         $ curl -qf 'https://192./168.111.1/display?image'
 
 factory
@@ -98,6 +96,18 @@ gpio
         6: out 1
         7: in 1
 
+hdmi
+
+    Write image to HDMI.
+
+    Options are:
+
+        timeout=X - display time in seconds, default is 0 and image will persist until changed.
+
+    Example:
+
+        $ curl --binary-data @image.png -qf 'https://192.168.111.1/hdmi'
+
 mkfm
 
     Trigger FM signal generation on GPIO 4. Returns transmit status message.
@@ -114,22 +124,15 @@ mkfm
         $ curl -qf 'http://192.168.111.1/mkfm?freq=100&time=5'
         Transmitting 1000 Hz on 100 MHz FM for 5 seconds
 
-play
+random
 
-    Start video playback on HDMI, returns playback status message.
+    Returns a hexadecimal string of random bytes.
 
-    Options are:
+    The number of bytes can be specified as an option, default is 32.
 
-        video=file  - play file in the cgi/media directory, default is
-                      'colorbars.mp4'.
-        time=X      - play time in seconds, 0-120, default is 30. 0 just kills
-                      the current playback.
-        lcd         - if provided, playback is via LCD instead of HDMI
+    Example, add 4096 bits of entropy to DUT's RNG (Linux only):
 
-    Example:
-
-        $ curl -qf 'http://192.168.111.1/play&time=10'
-        Playing /home/pi/pionic/cgi/media/colorbars.mp4 on hdmi for 10 seconds
+        $ curl -qf 'http://192./168.111.1/random?512 > /dev/random
 
 time
 
@@ -139,16 +142,3 @@ time
 
          $ curl -qf http://192.168.111.1/time
          1554235513 200504022019.13
-
-i2c
-
-    A simple wrapper for i2cio, passes the posted command tesxt to i2cio stdin and returns hex data output, if any.
-
-    Example:
-
-	$ curl --data-binary @- http://192.168.111.1/i2c <<< 'd 0x21 1 w 0x44 r 2'
-        0x01 0x34
-
-    (in this case, read two bytes from hypothetical register 0x44 of hypothetical device 0x21 on bus 1)
-
-    See http://github.com/glitchub/i2cio for details.
