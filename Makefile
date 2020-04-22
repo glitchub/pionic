@@ -40,8 +40,7 @@ DHCP_RANGE:=$(strip ${DHCP_RANGE})
 endif
 
 # Other repos to install, first word is the actual repo, the rest is the build command
-REPOS += "https://github.com/glitchub/runfor   make"
-REPOS += "https://github.com/glitchub/plio" # does not build
+REPOS += "https://github.com/glitchub/plio   make install"
 
 # Files to be tweaked
 FILES=/lib/systemd/system/pionic.service /boot/config.txt /etc/hosts
@@ -117,7 +116,7 @@ endif
 .PHONY: legacy
 legacy:
 	sed -i '/pionic/d' /etc/rc.local
-	rm -rf evdump
+	rm -rf evdump runfor
 	-${APT-REMOVE} omxplayer python3-pgmagick
 
 # Add "pionic.server" hostname
@@ -174,7 +173,8 @@ uninstall:
 	make INSTALL=
 	@for r in ${REPOS}; do \
 	    read repo build < <(echo $$r); \
-	    rm -rf $${repo##*/}; \
+	    d=$${repo##*/} ; \
+	    if [[ -d $$d ]]; then make -C $$d clean; rm -rf $$d; fi; \
 	done
 	${APT-REMOVE} $(sort ${PACKAGES})
 	if [ -d rasping ]; then make -C rasping uninstall && rm -rf rasping; fi

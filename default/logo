@@ -51,18 +51,14 @@ message = " ".join(args)
 def stop(): select.select([],[],[])
 
 # if fbtools is not installed then just print the message and stop
-if "PIONIC" not in os.environ: raise Exception("Expected PIONIC environment variable")
-fbtools=os.environ["PIONIC"]+"/fbtools"
-if not os.path.isdir(fbtools):
+try:
+    from fbtools import screen, touch
+except:
     print(message)
     stop()
 
-# import modules from fbtools
-sys.path.insert(0, fbtools)
-import fbscreen, touch
-
 # create the screen
-screen=fbscreen.Screen(fg=fg, bg=bg, font=font, border=border)
+screen=screen.Screen(fg=fg, bg=bg, font=font, border=border)
 margin += border
 if margin:
     inner=screen.child(left=margin, top=margin, right=-margin, bottom=-margin)
