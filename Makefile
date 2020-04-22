@@ -39,8 +39,8 @@ UNBLOCK:=$(strip ${UNBLOCK})
 DHCP_RANGE:=$(strip ${DHCP_RANGE})
 endif
 
-# Other repos to install, first word is the actual repo, the rest is the build command
-REPOS += "https://github.com/glitchub/plio   make install"
+# Other repos to install, first word is the actual repo, the rest is the build command (if any)
+REPOS += "https://github.com/glitchub/plio   git checkout -q py3 && make install"
 
 # Files to be tweaked
 FILES=/lib/systemd/system/pionic.service /boot/config.txt /etc/hosts
