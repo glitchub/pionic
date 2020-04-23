@@ -37,6 +37,7 @@ UNBLOCK += 22 # always unblock 22
 FORWARD:=$(strip ${FORWARD})
 UNBLOCK:=$(strip ${UNBLOCK})
 DHCP_RANGE:=$(strip ${DHCP_RANGE})
+VLAN:=$(strip ${VLAN})
 endif
 
 # Other repos to install, first word is the actual repo, the rest is the build command (if any)
@@ -69,7 +70,7 @@ endif
 ifdef LAN_IP
 	# Install the NAT gateway
 	[ -d rasping ] && git -C rasping pull || git clone https://github.com/glitchub/rasping
-	make -C rasping UNBLOCK='${UNBLOCK}' LAN_IP=${LAN_IP} FORWARD='${FORWARD}' DHCP_RANGE='${DHCP_RANGE}' PINGABLE=yes
+	make -C rasping UNBLOCK='${UNBLOCK}' LAN_IP=${LAN_IP} FORWARD='${FORWARD}' DHCP_RANGE='${DHCP_RANGE}' PINGABLE=yes LAN_VLAN='${VLAN}'
 endif
 	sync
 	@echo "Reboot to start pionic"
