@@ -161,15 +161,15 @@ ifdef HDMI_MODE
 endif
 endif
 
-# Clean config files but don't remove packages or repos
+# Clean pionic configuration but don't remove packages or repos.
 clean:
 	-systemctl stop pionic
 	make INSTALL=
 	sync
 	@echo "Clean complete"
 
-# Clean config files and remove packages and repos
-# OK if 'make uninstall' fails with various packages
+# Clean pionic configuration and remove packages and repos. Tries 'make
+# uninstall' for repos with a build command, OK if that doesn't actually work.
 uninstall:
 	-systemctl stop pionic
 	make INSTALL=
