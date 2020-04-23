@@ -50,8 +50,8 @@ FILES=/lib/systemd/system/pionic.service /boot/config.txt /etc/hosts
 raspi-config=raspi-config nonint $1 $(if $(filter on,$2),0,1)
 
 # functions to invoke apt
-APT-INSTALL=DEBIAN_FRONTEND=noninteractive apt install -y
-APT-REMOVE=DEBIAN_FRONTEND=noninteractive apt remove --autoremove --purge -y
+APT-INSTALL=DEBIAN_FRONTEND=noninteractive apt -oDpkg::Progress-Fancy=0 install -y
+APT-REMOVE=DEBIAN_FRONTEND=noninteractive apt -oDpkg::Progress-Fancy=0 remove --autoremove --purge -y
 
 .PHONY: default clean packages repos files ${FILES}
 
@@ -169,6 +169,7 @@ clean:
 	@echo "Clean complete"
 
 # Clean config files and remove packages and repos
+# OK if 'make uninstall' fails with various packages
 uninstall:
 	-systemctl stop pionic
 	make INSTALL=
@@ -176,7 +177,7 @@ uninstall:
 	    read repo build < <(echo $$r); \
 	    dir=$${repo##*/} ; \
 	    if [[ -d $$dir ]]; then \
-	        [[ "$$build" ]] && make -C $$dir clean;
+	        [[ "$$build" ]] && make -C $$dir uninstall; \
 	        rm -rf $$dir; \
 	    fi; \
 	done
