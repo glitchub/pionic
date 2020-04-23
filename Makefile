@@ -174,11 +174,14 @@ uninstall:
 	make INSTALL=
 	@for r in ${REPOS}; do \
 	    read repo build < <(echo $$r); \
-	    d=$${repo##*/} ; \
-	    if [[ -d $$d ]]; then make -C $$d clean; rm -rf $$d; fi; \
+	    dir=$${repo##*/} ; \
+	    if [[ -d $$dir ]]; then \
+	        [[ "$$build" ]] && make -C $$dir clean;
+	        rm -rf $$dir; \
+	    fi; \
 	done
-	${APT-REMOVE} $(sort ${PACKAGES})
 	if [ -d rasping ]; then make -C rasping uninstall && rm -rf rasping; fi
+	${APT-REMOVE} $(sort ${PACKAGES})
 	sync
 	@echo "Uninstall complete"
 
