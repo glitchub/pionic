@@ -37,11 +37,11 @@ UNBLOCK += 22 # always unblock 22
 FORWARD:=$(strip ${FORWARD})
 UNBLOCK:=$(strip ${UNBLOCK})
 DHCP_RANGE:=$(strip ${DHCP_RANGE})
+VLAN:=$(strip ${VLAN})
 endif
 
-# Other repos to install, first word is the actual repo, the rest is the build command
-REPOS += "https://github.com/glitchub/runfor   make"
-REPOS += "https://github.com/glitchub/plio" # does not build
+# Other repos to install, first word is the actual repo, the rest is the build command (if any)
+REPOS += "https://github.com/glitchub/plio   make install"
 
 # Files to be tweaked
 FILES=/lib/systemd/system/pionic.service /boot/config.txt /etc/hosts
@@ -50,8 +50,8 @@ FILES=/lib/systemd/system/pionic.service /boot/config.txt /etc/hosts
 raspi-config=raspi-config nonint $1 $(if $(filter on,$2),0,1)
 
 # functions to invoke apt
-APT-INSTALL=DEBIAN_FRONTEND=noninteractive apt install -y
-APT-REMOVE=DEBIAN_FRONTEND=noninteractive apt remove --autoremove --purge -y
+APT-INSTALL=DEBIAN_FRONTEND=noninteractive apt -oDpkg::Progress-Fancy=0 install -y
+APT-REMOVE=DEBIAN_FRONTEND=noninteractive apt -oDpkg::Progress-Fancy=0 remove --autoremove --purge -y
 
 .PHONY: default clean packages repos files ${FILES}
 
@@ -70,7 +70,7 @@ endif
 ifdef LAN_IP
 	# Install the NAT gateway
 	[ -d rasping ] && git -C rasping pull || git clone https://github.com/glitchub/rasping
-	make -C rasping UNBLOCK='${UNBLOCK}' LAN_IP=${LAN_IP} FORWARD='${FORWARD}' DHCP_RANGE='${DHCP_RANGE}' PINGABLE=yes
+	make -C rasping UNBLOCK='${UNBLOCK}' LAN_IP=${LAN_IP} FORWARD='${FORWARD}' DHCP_RANGE='${DHCP_RANGE}' PINGABLE=yes LAN_VLAN='${VLAN}'
 endif
 	sync
 	@echo "Reboot to start pionic"
@@ -117,7 +117,7 @@ endif
 .PHONY: legacy
 legacy:
 	sed -i '/pionic/d' /etc/rc.local
-	rm -rf evdump
+	rm -rf evdump runfor
 	-${APT-REMOVE} omxplayer python3-pgmagick
 
 # Add "pionic.server" hostname
@@ -161,23 +161,28 @@ ifdef HDMI_MODE
 endif
 endif
 
-# Clean config files but don't remove packages or repos
+# Clean pionic configuration but don't remove packages or repos.
 clean:
 	-systemctl stop pionic
 	make INSTALL=
 	sync
 	@echo "Clean complete"
 
-# Clean config files and remove packages and repos
+# Clean pionic configuration and remove packages and repos. Tries 'make
+# uninstall' for repos with a build command, OK if that doesn't actually work.
 uninstall:
 	-systemctl stop pionic
 	make INSTALL=
 	@for r in ${REPOS}; do \
 	    read repo build < <(echo $$r); \
-	    rm -rf $${repo##*/}; \
+	    dir=$${repo##*/} ; \
+	    if [[ -d $$dir ]]; then \
+	        [[ "$$build" ]] && make -C $$dir uninstall; \
+	        rm -rf $$dir; \
+	    fi; \
 	done
-	${APT-REMOVE} $(sort ${PACKAGES})
 	if [ -d rasping ]; then make -C rasping uninstall && rm -rf rasping; fi
+	${APT-REMOVE} $(sort ${PACKAGES})
 	sync
 	@echo "Uninstall complete"
 
