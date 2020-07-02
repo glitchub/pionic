@@ -32,8 +32,7 @@
 #                +-----+
 
 import os, sys, re
-sys.path.append(os.environ['PIONIC']+'/plio')
-from gpio_sysfs import gpio
+from plio.gpio_sysfs import gpio
 
 # check gpio is valid
 def valid(gpio):

@@ -44,7 +44,7 @@ endif
 REPOS += "https://github.com/glitchub/plio   make install"
 
 # Files to be tweaked
-FILES=/lib/systemd/system/pionic.service /boot/config.txt /etc/hosts
+FILES=/lib/systemd/system/pionic.service /boot/config.txt
 
 # function to invoke raspi-config in non-interactive mode, "on" enables, any other disables
 raspi-config=raspi-config nonint $1 $(if $(filter on,$2),0,1)
@@ -116,18 +116,17 @@ endif
 # delete legacy stuff
 .PHONY: legacy
 legacy:
+	sed -i '/pionic start/,/pionic end/d' /etc/hosts
 	sed -i '/pionic/d' /etc/rc.local
 	rm -rf evdump runfor
 	-${APT-REMOVE} omxplayer python3-pgmagick
 
 # Add "pionic.server" hostname
-/etc/hosts:
-	sed -i '/pionic start/,/pionic end/d' $@
+/etc/dnsmasq.d/pionic.conf:
+	rm -f $@
 ifdef INSTALL
 ifdef LAN_IP
-	echo "# pionic start" >> $@
-	echo "${LAN_IP} pionic.server" >> $@
-	echo "# pionic end" >> $@
+	echo "address=/pionic.server/${LAN_IP}" >> $@
 endif
 endif
 
